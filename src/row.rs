@@ -1,8 +1,8 @@
 use super::custom_error::CustomError;
-use super::expression::Expression;
+use super::expression::{Expression, evaluate_expression};
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
 use std::fs::File;
+use std::io::{BufWriter, Write};
 pub struct Row {
     columns: Vec<String>,
     values: HashMap<String, String>,
@@ -19,7 +19,10 @@ fn write_result(writer: &mut BufWriter<File>, string: &str) -> Result<(), Custom
 
 impl Row {
     pub fn new(columns: &Vec<String>, values: HashMap<String, String>) -> Row {
-        Row { columns: columns.clone(), values } // TODO: Borrar clone
+        Row {
+            columns: columns.clone(),
+            values,
+        } // TODO: Borrar clone
     }
 
     // Writes row as it is to a file
@@ -44,7 +47,12 @@ impl Row {
     }
 
     // Writes row to a file after updating it given a condition
-    pub fn update_row(&mut self, update_values: HashMap<String, String>, condition: &Expression, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
+    pub fn update_row(
+        &mut self,
+        update_values: HashMap<String, String>,
+        condition: &Expression,
+        writer: &mut BufWriter<File>,
+    ) -> Result<(), CustomError> {
         for column_to_update in update_values.keys() {
             if !self.columns.contains(column_to_update) {
                 return Err(CustomError::InvalidColumn {
@@ -56,14 +64,23 @@ impl Row {
         Ok(())
     }
 
-    pub fn delete_row(&self, condition: &Expression, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
-        // if condition == "true" no lo escribo
-
-        // if condition == "false" lo escribo
+    pub fn delete_row(
+        &self,
+        condition: &Expression,
+        writer: &mut BufWriter<File>,
+    ) -> Result<(), CustomError> {
+        let result: bool = evaluate_expression(condition, &self.values)?;
+        if result == false {
+            self.write_row(writer)?;
+        }
         Ok(())
     }
 
-    pub fn select_row(&self, columns: &Vec<String>, condition: &Expression) -> Result<(), CustomError> {
+    pub fn select_row(
+        &self,
+        columns: &Vec<String>,
+        condition: &Expression,
+    ) -> Result<(), CustomError> {
         Ok(())
     }
 }

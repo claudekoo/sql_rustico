@@ -17,7 +17,10 @@ fn parse_or_expression(
         if op == "OR" {
             tokens.next();
             let right = parse_and_expression(tokens)?;
-            expression = Expression::Or(Box::new(expression), Box::new(right));
+            expression = Expression::Or {
+                left: Box::new(expression),
+                right: Box::new(right),
+            };
         } else {
             break;
         }
@@ -33,7 +36,10 @@ fn parse_and_expression(
         if op == "AND" {
             tokens.next();
             let right = parse_not_expression(tokens)?;
-            expression = Expression::And(Box::new(expression), Box::new(right));
+            expression = Expression::And {
+                left: Box::new(expression),
+                right: Box::new(right),
+            };
         } else {
             break;
         }
@@ -48,7 +54,9 @@ fn parse_not_expression(
         if op == "NOT" {
             tokens.next();
             let expression = parse_primary_expression(tokens)?;
-            return Ok(Expression::Not(Box::new(expression)));
+            return Ok(Expression::Not {
+                right: Box::new(expression),
+            });
         }
     }
     parse_primary_expression(tokens)

@@ -476,7 +476,7 @@ fn parse_order_by_column(
         } else {
             return Err(CustomError::InvalidSyntax {
                 message: format!("Expected DESC or nothing after column name"),
-            })
+            });
         }
     } else {
         order_by_tuple = (order_by_column, "ASC".to_string());

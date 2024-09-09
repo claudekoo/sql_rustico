@@ -3,12 +3,12 @@ mod command_processer;
 use command_processer::process_command;
 mod custom_error;
 use custom_error::CustomError;
+mod command_parser;
 mod expression;
 mod expression_parser;
 mod row;
 mod row_parser;
 mod tokenizer;
-mod command_parser;
 
 // recibo y parseo el input a struct
 // cargo los archivos en cuestion linea a linea

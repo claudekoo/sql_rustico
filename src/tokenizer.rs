@@ -37,7 +37,8 @@ fn tokenize_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
     }
     let word_upper = word.to_uppercase();
     if [
-        "INSERT", "UPDATE", "DELETE", "SELECT", "FROM", "WHERE", "SET", "INTO", "VALUES", "ORDER", "BY", "DESC",
+        "INSERT", "UPDATE", "DELETE", "SELECT", "FROM", "WHERE", "SET", "INTO", "VALUES", "ORDER",
+        "BY", "DESC",
     ]
     .contains(&word_upper.as_str())
     {

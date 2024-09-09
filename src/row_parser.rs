@@ -1,6 +1,6 @@
-use std::collections::HashMap;
 use super::custom_error::CustomError;
 use super::row::Row;
+use std::collections::HashMap;
 
 pub fn parse_row(columns: &Vec<String>, line: &str) -> Result<Row, CustomError> {
     let values: Vec<&str> = line.split(",").collect();
@@ -8,7 +8,7 @@ pub fn parse_row(columns: &Vec<String>, line: &str) -> Result<Row, CustomError> 
         return Err(CustomError::InvalidTable {
             message: "Columns size missmatch".to_string(),
         });
-    }   
+    }
     let mut row_values: HashMap<String, String> = HashMap::new();
     for (i, value) in values.iter().enumerate() {
         row_values.insert(columns[i].to_string(), value.to_string());
