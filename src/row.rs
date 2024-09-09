@@ -49,20 +49,19 @@ impl Row {
     // Writes row to a file after updating it given a condition
     pub fn update_row(
         &mut self,
-        update_values: HashMap<String, String>,
+        update_values: &HashMap<String, String>,
         condition: &Expression,
         writer: &mut BufWriter<File>,
     ) -> Result<(), CustomError> {
-        for column_to_update in update_values.keys() {
-            if !self.columns.contains(column_to_update) {
-                return Err(CustomError::InvalidColumn {
-                    message: "Column does not exist".to_string(),
-                });
+        let result = evaluate_expression(condition, &self.values)?;
+        if result == true {
+            for column_to_update in update_values.keys() {
+                update_if_present(&mut self.values, column_to_update, update_values[column_to_update].as_str())?;
             }
         }
         self.write_row(writer)?;
         Ok(())
-    }
+        }
 
     pub fn delete_row(
         &self,
@@ -82,5 +81,16 @@ impl Row {
         condition: &Expression,
     ) -> Result<(), CustomError> {
         Ok(())
+    }
+}
+
+fn update_if_present(map: &mut HashMap<String, String>, key: &str, value: &str) -> Result<(), CustomError> {
+    if let Some(_) = map.get(key) {
+        map.insert(key.to_string(), value.to_string());
+        Ok(())
+    } else {
+        Err(CustomError::InvalidColumn {
+            message: "Column does not exist".to_string(),
+        })
     }
 }

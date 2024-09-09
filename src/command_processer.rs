@@ -102,9 +102,9 @@ fn process_update(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
     let tmp_file = create_file(&tmp_path)?; // creo el archivo temporal
     let mut writer = BufWriter::new(tmp_file);
-    //update_table(table_path.as_str(), &mut writer, &condition)?;
-    //remove_file(&table_path)?;
-    //rename_file(&tmp_path, &table_path)?;
+    update_table(table_path.as_str(), &mut writer, &condition, &set_values)?;
+    remove_file(&table_path)?;
+    rename_file(&tmp_path, &table_path)?;
     Ok(())
 }
 
@@ -229,6 +229,37 @@ fn copy_table(table_path: &str, writer: &mut BufWriter<File>) -> Result<Vec<Stri
         }
     }
     Ok(columns)
+}
+
+fn update_table(
+    table_path: &str,
+    writer: &mut BufWriter<File>,
+    condition: &Expression,
+    update_values: &HashMap<String, String>,
+) -> Result<(), CustomError> {
+    let table_file = open_table_path(table_path)?;
+    let mut columns: Vec<String> = vec![];
+    let table_reader = std::io::BufReader::new(table_file);
+    let mut first_line = true;
+    for line in table_reader.lines() {
+        if let Err(_) = line {
+            return Err(CustomError::GenericError {
+                message: "Couldn't read table file".to_string(),
+            });
+        }
+        if let Ok(line) = line {
+            if first_line {
+                first_line = false;
+                columns = line.split(",").map(|s| s.to_string()).collect();
+                let row = row_parser::parse_row(&columns, line.as_str())?;
+                row.write_row(writer)?;
+                continue;
+            }
+            let mut row = row_parser::parse_row(&columns, line.as_str())?;
+            row.update_row(update_values, condition, writer)?;
+        }
+    }
+    Ok(())
 }
 
 fn delete_rows_table(
