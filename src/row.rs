@@ -75,12 +75,20 @@ impl Row {
         Ok(())
     }
 
-    pub fn select_row(
+    pub fn check_condition(
         &self,
-        columns: &Vec<String>,
         condition: &Expression,
-    ) -> Result<(), CustomError> {
-        Ok(())
+    ) -> Result<bool, CustomError> {
+        let result: bool = evaluate_expression(condition, &self.values)?;
+        Ok(result)
+    }
+
+    pub fn hashmap(&self) -> HashMap<String, String> {
+        let mut new_hashmap = HashMap::new();
+        for (key, value) in self.values.iter() {
+            new_hashmap.insert(key.to_string(), value.to_string());
+        }
+        new_hashmap
     }
 }
 

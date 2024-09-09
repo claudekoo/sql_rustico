@@ -136,6 +136,34 @@ fn process_select(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
         &mut order_by,
     )?;
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
+    let mut selected_rows = select_rows_table(table_path.as_str(), &condition, &mut columns)?;
+    order_by.iter().rev().for_each(|tuple| {
+        let column: &str = tuple.0.as_str();
+        let ascent: &str = tuple.1.as_str();
+        selected_rows.sort_by(|a, b| {
+            let a_value = a.get(column).unwrap();
+            let b_value = b.get(column).unwrap();
+            if ascent == "ASC" {
+                return a_value.cmp(b_value);
+            }
+            b_value.cmp(a_value)
+        });
+    });
+    println!("{}", columns.join(","));
+    for row in selected_rows {
+        let mut row_values = vec![];
+        for column in &columns {
+            if let Some(value) = row.get(column) {
+                row_values.push(value);
+            } else {
+                return Err(CustomError::InvalidColumn {
+                    message: format!("No column named {} found from the table", column),
+                });
+            }
+        }
+        let row_values_str: Vec<&str> = row_values.iter().map(|string| string.as_str()).collect();
+        println!("{}", row_values_str.join(","));
+    }
     Ok(())
 }
 
@@ -290,4 +318,41 @@ fn delete_rows_table(
         }
     }
     Ok(())
+}
+
+fn select_rows_table(
+    table_path: &str,
+    condition: &Expression,
+    columns_to_display: &mut Vec<String>,
+) -> Result<Vec<HashMap<String, String>>, CustomError> {
+    let table_file = open_table_path(table_path)?;
+    let table_reader = std::io::BufReader::new(table_file);
+    let mut first_line = true;
+    let mut selected_rows = vec![];
+    let mut full_columns: Vec<String> = vec![];
+    for line in table_reader.lines() {
+        if let Err(_) = line {
+            return Err(CustomError::GenericError {
+                message: "Couldn't read table file".to_string(),
+            });
+        }
+        if let Ok(line) = line {
+            if first_line {
+                first_line = false;
+                full_columns = line.split(",").map(|s| s.to_string()).collect();
+                if columns_to_display.is_empty() {
+                    for column in &full_columns {
+                        columns_to_display.push(column.to_string());
+                    }
+                }
+                continue;
+            }
+            let row = row_parser::parse_row(&full_columns, line.as_str())?;
+            let selected: bool = row.check_condition(condition)?;
+            if selected {
+                selected_rows.push(row.hashmap());
+            }
+        }
+    }
+    Ok(selected_rows)
 }
