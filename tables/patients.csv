@@ -1,0 +1,11 @@
+ID,Patient_ID,Name,Date_of_Birth,Blood_Type,Allergies,Assigned_Doctor,Admission_Date,Room
+1,P12345,Mary Johnson,15/03/1980,A+,Penicillin,Dr. Rodriguez,02/09/2023,301
+2,P12346,Charles Smith,22/07/1995,O-,None,Dr. Fernandez,03/09/2023,205
+3,P12347,Anna Brown,10/11/1972,B-,Latex,Dr. Sanchez,01/09/2023,412
+4,P12348,John Davis,05/09/1988,AB+,Shellfish,Dr. Gomez,04/09/2023,110
+5,P12349,Sophie Wilson,30/12/2000,A-,Pollen,Dr. Torres,02/09/2023,308
+6,P12350,Louis Miller,18/06/1965,O+,Aspirin,Dr. Vargas,03/09/2023,215
+7,P12351,Helen Taylor,25/04/1990,B+,None,Dr. Mendoza,01/09/2023,401
+8,P12352,Robert Anderson,12/08/1978,AB-,Sulfa drugs,Dr. Ortiz,04/09/2023,120
+9,P12353,Carmen White,03/01/1983,A+,Eggs,Dr. Jimenez,02/09/2023,305
+10,P12354,Daniel Harris,20/05/1970,O-,Tree nuts,Dr. Navarro,03/09/2023,210

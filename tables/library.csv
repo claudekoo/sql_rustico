@@ -1,0 +1,11 @@
+ID,ISBN,Title,Author,Genre,Publication_Year,Available,Location
+1,9780061120084,To Kill a Mockingbird,Harper Lee,Fiction,1960,Yes,A3-12
+2,9780141439518,Pride and Prejudice,Jane Austen,Romance,1813,No,B2-05
+3,9780547928227,The Hobbit,J.R.R. Tolkien,Fantasy,1937,Yes,C1-08
+4,9780307474278,The Da Vinci Code,Dan Brown,Thriller,2003,Yes,D4-15
+5,9780062315007,The Alchemist,Paulo Coelho,Fiction,1988,No,A1-03
+6,9780743273565,The Great Gatsby,F. Scott Fitzgerald,Classic,1925,Yes,B3-09
+7,9780452284234,1984,George Orwell,Science Fiction,1949,Yes,C2-11
+8,9780060850524,Brave New World,Aldous Huxley,Science Fiction,1932,No,C2-12
+9,9780316769174,The Catcher in the Rye,J.D. Salinger,Fiction,1951,Yes,A2-07
+10,9780593311257,Dune,Frank Herbert,Science Fiction,1965,Yes,C1-14

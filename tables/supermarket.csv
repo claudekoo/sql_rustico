@@ -1,0 +1,11 @@
+ID,Code,Product,Category,Price,Stock,Supplier
+1,P001,Whole Milk,Dairy,1.25,100,Valley Dairy
+2,P002,Whole Wheat Bread,Bakery,2.50,50,Garcia's Bakery
+3,P003,Gala Apples,Fruits,0.75,200,Sanchez Produce
+4,P004,Canned Tuna,Canned Goods,1.80,150,Sea Fish Co.
+5,P005,Toilet Paper,Household,4.99,80,National Paper
+6,P006,White Rice,Grains,2.20,120,Food Distributors Inc.
+7,P007,Hand Soap,Hygiene,1.50,90,Clean Chemistry
+8,P008,Plain Yogurt,Dairy,0.99,75,Valley Dairy
+9,P009,Toothpaste,Hygiene,3.25,60,Dental Health
+10,P010,Olive Oil,Cooking,6.75,40,Mediterranean Oils
