@@ -1,31 +1,52 @@
 use super::custom_error::CustomError;
+use std::iter::Peekable;
+use std::str::Chars;
 
 #[derive(Debug)]
+/// Los Tokens son la unidad mínima de un comando SQL existen para facilitar su parseo.
 pub enum Token {
-    Keyword(String), // palabra clave: INSERT, UPDATE, DELETE, SELECT, FROM, WHERE, SET, INTO, VALUES, ORDER, BY, DESC
-    LogicalOperator(String), // AND, OR, NOT
-    ComparisonOperator(String), // =, >, <, >=, <=
-    Identifier(String), // nombre de tabla o columna
-    String(String),  // strings entre comillas
-    Integer(String), // enteros
-    Symbol(char),    // simbolos: , ( ) ; *
+    /// Los Keywords son palabras clave de un comando SQL, esta implementación incluye:
+    /// INSERT, UPDATE, DELETE, SELECT, FROM, WHERE, SET, INTO, VALUES, ORDER, BY, DESC
+    Keyword(String),
+    /// Los LogicalOperators son operadores lógicos, en esta implementación incluye:
+    /// AND, OR, NOT
+    LogicalOperator(String),
+    /// Los ComparisonOperators son operadores de comparación, en esta implementación incluye:
+    /// =, >, <, >=, <=
+    ComparisonOperator(String),
+    /// Los Identifiers son nombres de tablas o columnas, pueden ser alfanuméricos.
+    Identifier(String),
+    /// Los Strings son cadenas de texto llegadas entre comillas simples.
+    String(String), 
+    /// Los Integers son números enteros.
+    Integer(String),
+    /// Los Symbols son caracteres especiales, en esta implementación incluye:
+    /// , ( ) ; *
+    Symbol(char),
 }
 
-fn tokenize_integer(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
-    let mut number = String::new();
+fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Chars>) -> Token {
+    let mut token_value = String::new();
     while let Some(&ch) = chars.peek() {
         if ch.is_digit(10) {
-            number.push(ch);
+            token_value.push(ch);
             chars.next();
+        } else if ch.is_alphabetic() {
+            while let Some(&ch) = chars.peek() {
+                if ch.is_alphanumeric() {
+                    token_value.push(ch);
+                    chars.next();
+                }
+            }
+            return Token::Identifier(token_value);
         } else {
             break;
         }
     }
-    Token::Integer(number)
+    Token::Integer(token_value)
 }
 
-// por como se tokeniza, no se va a poder tomar palabras empezando con numeros
-fn tokenize_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
+fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
     let mut word = String::new();
     while let Some(&ch) = chars.peek() {
         if ch.is_alphanumeric() {
@@ -50,7 +71,7 @@ fn tokenize_word(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
     }
 }
 
-fn tokenize_string(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
+fn tokenize_string(chars: &mut Peekable<Chars>) -> Token {
     chars.next();
     let mut string = String::new();
     while let Some(&ch) = chars.peek() {
@@ -65,7 +86,7 @@ fn tokenize_string(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
     Token::String(string)
 }
 
-fn tokenize_comparison_operator(chars: &mut std::iter::Peekable<std::str::Chars>) -> Token {
+fn tokenize_comparison_operator(chars: &mut Peekable<Chars>) -> Token {
     let mut comparison = String::new();
     if let Some(&ch) = chars.peek() {
         if '=' == ch {
@@ -87,6 +108,7 @@ fn tokenize_comparison_operator(chars: &mut std::iter::Peekable<std::str::Chars>
     Token::ComparisonOperator(comparison)
 }
 
+/// Tokeniza un string de entrada y retorna un vector de Tokens.
 pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
     let mut tokens = vec![];
     let mut chars = input.chars().peekable();
@@ -96,7 +118,9 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
             // ignorar espacios y newlines
             chars.next(); // esto ocurre solo cuando no esta entre comillas
         } else if ch.is_digit(10) {
-            tokens.push(tokenize_integer(&mut chars));
+            tokens.push(tokenize_integer_or_identifier_starting_with_integer(
+                &mut chars,
+            ));
         } else if ch.is_alphabetic() {
             tokens.push(tokenize_word(&mut chars)); // palabras clave o nombres
         } else if ch == '\'' {

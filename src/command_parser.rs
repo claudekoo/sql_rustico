@@ -4,9 +4,11 @@ use super::expression_parser::parse_expression;
 use super::tokenizer::Token;
 use std::collections::HashMap;
 
-// INSERT: todos los campos obligatorios
-// INSERT INTO ordenes (id, id_cliente, producto, cantidad)
-// VALUES (111, 6, 'Laptop', 3);
+/// Parsea un comando INSERT que llega en forma de vector de tokens.
+/// Modifica los parametros table_name, columns y values.
+///
+/// El formato del comando INSERT esperado es:
+/// INSERT INTO <table_name> (<column1>, <column2>, ...) VALUES (<value1>, <value2>, ...);
 pub fn parse_insert(
     tokens: &Vec<Token>,
     table_name: &mut String,
@@ -156,10 +158,12 @@ fn parse_value(
     Ok(())
 }
 
-// UPDATE: tablename y set_values obligatorios, condition opcional
-// UPDATE clientes
-// SET email = 'mrodriguez@hotmail.com'
-// WHERE id = 4;
+/// Parsea un comando UPDATE que llega en forma de vector de tokens.
+/// Modifica los parametros table_name, set_values y condition.
+///
+/// El formato del comando UPDATE esperado es:
+/// UPDATE <table_name> SET <column1> = <value1>, <column2> = <value2>, ... WHERE <condition>;
+/// donde WHERE es opcional.
 pub fn parse_update(
     tokens: &Vec<Token>,
     table_name: &mut String,
@@ -289,8 +293,12 @@ fn parse_condition(
     }
 }
 
-// DELETE: tablename obligatorio, condition opcional
-// DELETE clientes WHERE id = 4;
+/// Parsea un comando DELETE que llega en forma de vector de tokens.
+/// Modifica los parametros table_name y condition.
+///
+/// El formato del comando DELETE esperado es:
+/// DELETE <table_name> WHERE <condition>;
+/// donde WHERE es opcional.
 pub fn parse_delete(
     tokens: &Vec<Token>,
     table_name: &mut String,
@@ -333,6 +341,12 @@ pub fn parse_delete(
 // FROM clientes
 // WHERE apellido = 'López'
 // ORDER BY email DESC;
+/// Parsea un comando SELECT que llega en forma de vector de tokens.
+/// Modifica los parametros columns, table_name, condition y order_by.
+///
+/// El formato del comando SELECT esperado es:
+/// SELECT <column1>, <column2>, ... FROM <table_name> WHERE <condition> ORDER BY <column> <order>, <column> <order>, ... ;
+/// donde WHERE y ORDER BY son opcionales.
 pub fn parse_select(
     tokens: &Vec<Token>,
     columns: &mut Vec<String>,

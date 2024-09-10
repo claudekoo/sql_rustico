@@ -2,6 +2,8 @@ use super::custom_error::CustomError;
 use super::row::Row;
 use std::collections::HashMap;
 
+/// Parsea una fila de un archivo CSV y la convierte en un objeto Row, dado un vector de columnas.
+/// Si la cantidad de valores en la fila no coincide con la cantidad de columnas, retorna un error.
 pub fn parse_row(columns: &Vec<String>, line: &str) -> Result<Row, CustomError> {
     let values: Vec<&str> = line.split(",").collect();
     if values.len() != columns.len() {

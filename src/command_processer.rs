@@ -8,9 +8,9 @@ use std::collections::HashMap;
 use std::fs::{self, File, ReadDir};
 use std::io::{BufRead, BufWriter};
 use std::path::Path;
-use std::vec;
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
+/// Procesa el comando recibido recibiendo un vector de argumentos, donde el primer argumento es el directorio de los archivos csv, y el segundo argumento es el comando a procesar.
 pub fn process_command(args: &Vec<String>) -> Result<(), CustomError> {
     let tokens = tokenize(args[2].as_str())?;
     let directory = Path::new(args[1].as_str());

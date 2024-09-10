@@ -1,10 +1,15 @@
 use std::fmt;
 
 #[derive(Debug)]
+/// Tipo de error personalizado para el programa.
 pub enum CustomError {
+    /// Error relacionados con lecctura de tablas.
     InvalidTable { message: String },
+    /// Error relacionados con columnas del comando.
     InvalidColumn { message: String },
+    /// Error relacionados con sintaxis del comando.
     InvalidSyntax { message: String },
+    /// Error genérico.
     GenericError { message: String },
 }
 

@@ -3,6 +3,9 @@ use super::expression::{Expression, Operand};
 use super::tokenizer::Token;
 use std::iter::Peekable;
 
+/// Parseauna expresión lógica dado un iterador de tokens, retornando un Expression que se estructura en forma de árbol.
+/// El orden de precedencia de los operadores lógicos es el siguiente:
+/// NOT, AND, OR
 pub fn parse_expression(
     tokens: &mut std::iter::Peekable<std::slice::Iter<Token>>,
 ) -> Result<Expression, CustomError> {

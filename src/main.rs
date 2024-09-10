@@ -1,22 +1,22 @@
 use std::env;
-mod command_processer;
-use command_processer::process_command;
-mod custom_error;
-use custom_error::CustomError;
 mod command_parser;
+mod command_processer;
+mod custom_error;
 mod expression;
 mod expression_parser;
 mod row;
 mod row_parser;
 mod tokenizer;
+use command_processer::process_command;
+use custom_error::CustomError;
 
-// recibo y parseo el input a struct
-// cargo los archivos en cuestion linea a linea
-// parseo los archivos a struct table
-//              vector(columnas) y vector de vectores(valores)
-// ejecuto la instruccion dada
-// parser los escribe en formato csv
-
+/// Recibe los argumentos de la línea de comandos y los procesa.
+/// Se espera como argumentos el directorio de las tablas y el comando SQL a ejecutar.
+/// 
+/// # Ejemplo
+/// ```sh
+/// cargo run tables/ "SELECT * FROM table1;"
+/// ```
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {

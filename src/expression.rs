@@ -2,6 +2,7 @@ use super::custom_error::CustomError;
 use std::collections::HashMap;
 
 #[derive(Debug)]
+/// Una expresión puede ser evaluada como verdadera o falsa.
 pub enum Expression {
     True,
     And {
@@ -15,6 +16,8 @@ pub enum Expression {
     Not {
         right: Box<Expression>,
     },
+    /// Los operadores soportados en esta implementación son:
+    /// =, >, <, >=, <=
     Comparison {
         left: Operand,
         operator: String,
@@ -23,12 +26,16 @@ pub enum Expression {
 }
 
 #[derive(Debug)]
+/// Los operandos son la unidadad mínima de una expresión en esta implementación.
+/// Pueden ser columnas, que consultan el valor de una columna en una fila, o valores literales limitados a Strings e Integers.
 pub enum Operand {
     Column(String),
     String(String),
     Integer(String),
 }
 
+/// Evalúa una expresión dada un Hashmap de columnas y valores.
+/// Retorna un booleano que indica si la expresión es verdadera o falsa.
 pub fn evaluate_expression(
     expression: &Expression,
     row: &HashMap<String, String>,
