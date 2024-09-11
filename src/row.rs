@@ -23,7 +23,7 @@ fn write_result(writer: &mut BufWriter<File>, string: &str) -> Result<(), Custom
 
 impl Row {
     /// Crea una nueva fila dado un vector de columnas y un HashMap de valores.
-    pub fn new(columns: &Vec<String>, values: HashMap<String, String>) -> Row {
+    pub fn new(columns: &[String], values: HashMap<String, String>) -> Row {
         let mut columns_in_order = Vec::new();
         for item in columns.iter() {
             columns_in_order.push(item.to_string());
@@ -37,9 +37,8 @@ impl Row {
     /// Se escribe a un archivo CSV.
     pub fn write_row(&self, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
         let last_index = self.columns_in_order.len() - 1;
-        let mut actual_index = 0;
 
-        for column in &self.columns_in_order {
+        for (actual_index, column) in self.columns_in_order.iter().enumerate() {
             let value_option = self.values.get(column);
             if let Some(value) = value_option {
                 write_result(writer, value)?;
@@ -51,7 +50,6 @@ impl Row {
             } else {
                 write_result(writer, "\n")?;
             }
-            actual_index += 1;
         }
         Ok(())
     }
@@ -63,8 +61,8 @@ impl Row {
         condition: &Expression,
         writer: &mut BufWriter<File>,
     ) -> Result<(), CustomError> {
-        let result = evaluate_expression(condition, &self.values)?;
-        if result == true {
+        let expression_is_true = evaluate_expression(condition, &self.values)?;
+        if expression_is_true {
             for column_to_update in update_values.keys() {
                 update_if_present(
                     &mut self.values,
@@ -83,8 +81,8 @@ impl Row {
         condition: &Expression,
         writer: &mut BufWriter<File>,
     ) -> Result<(), CustomError> {
-        let result: bool = evaluate_expression(condition, &self.values)?;
-        if result == false {
+        let expression_is_true: bool = evaluate_expression(condition, &self.values)?;
+        if !expression_is_true {
             self.write_row(writer)?;
         }
         Ok(())
@@ -111,7 +109,7 @@ fn update_if_present(
     key: &str,
     value: &str,
 ) -> Result<(), CustomError> {
-    if let Some(_) = map.get(key) {
+    if map.get(key).is_some() {
         map.insert(key.to_string(), value.to_string());
         Ok(())
     } else {

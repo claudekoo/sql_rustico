@@ -28,7 +28,7 @@ pub enum Token {
 fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Chars>) -> Token {
     let mut token_value = String::new();
     while let Some(&ch) = chars.peek() {
-        if ch.is_digit(10) {
+        if ch.is_ascii_digit() {
             token_value.push(ch);
             chars.next();
         } else if ch.is_alphabetic() {
@@ -117,7 +117,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
         if ch.is_whitespace() {
             // ignorar espacios y newlines
             chars.next(); // esto ocurre solo cuando no esta entre comillas
-        } else if ch.is_digit(10) {
+        } else if ch.is_ascii_digit() {
             tokens.push(tokenize_integer_or_identifier_starting_with_integer(
                 &mut chars,
             ));

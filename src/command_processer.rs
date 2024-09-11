@@ -11,29 +11,29 @@ use std::path::Path;
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
 /// Procesa el comando recibido recibiendo un vector de argumentos, donde el primer argumento es el directorio de los archivos csv, y el segundo argumento es el comando a procesar.
-pub fn process_command(args: &Vec<String>) -> Result<(), CustomError> {
+pub fn process_command(args: &[String]) -> Result<(), CustomError> {
     let tokens = tokenize(args[2].as_str())?;
     let directory = Path::new(args[1].as_str());
-    if let Some(Token::Keyword(keyword)) = tokens.get(0) {
+    if let Some(Token::Keyword(keyword)) = tokens.first() {
         match keyword.as_str() {
             "INSERT" => {
-                return process_insert(&tokens, directory);
+                process_insert(&tokens, directory)
             }
             "UPDATE" => {
-                return process_update(&tokens, directory);
+                process_update(&tokens, directory)
             }
             "DELETE" => {
-                return process_delete(&tokens, directory);
+                process_delete(&tokens, directory)
             }
             "SELECT" => {
-                return process_select(&tokens, directory);
+                process_select(&tokens, directory)
             }
             other => {
-                return CustomError::error_invalid_syntax(&format!("Invalid command: {}", other));
+                CustomError::error_invalid_syntax(&format!("Invalid command: {}", other))
             }
         }
     } else {
-        return CustomError::error_invalid_syntax("Usage: <COMMAND> <...>");
+        CustomError::error_invalid_syntax("Usage: <COMMAND> <...>")
     }
 }
 
@@ -42,12 +42,12 @@ fn create_file(file_path: &str) -> Result<File, CustomError> {
     if let Ok(file) = create_file_result {
         return Ok(file);
     }
-    return Err(CustomError::GenericError {
+    Err(CustomError::GenericError {
         message: "Couldn't create file".to_string(),
-    });
+    })
 }
 
-fn process_insert(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomError> {
+fn process_insert(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut columns = vec![];
     let mut values = vec![];
@@ -70,7 +70,7 @@ fn process_insert(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
 
 fn remove_file(file_path: &str) -> Result<(), CustomError> {
     let remove_file_result = fs::remove_file(file_path);
-    if let Err(_) = remove_file_result {
+    if remove_file_result.is_err() {
         return CustomError::error_generic("Couldn't remove file");
     }
     Ok(())
@@ -78,13 +78,13 @@ fn remove_file(file_path: &str) -> Result<(), CustomError> {
 
 fn rename_file(from: &str, to: &str) -> Result<(), CustomError> {
     let rename_file_result = fs::rename(from, to);
-    if let Err(_) = rename_file_result {
+    if rename_file_result.is_err() {
         return CustomError::error_generic("Couldn't rename file");
     }
     Ok(())
 }
 
-fn process_update(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomError> {
+fn process_update(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut set_values = HashMap::new();
     let mut condition = Expression::True;
@@ -100,7 +100,7 @@ fn process_update(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
     Ok(())
 }
 
-fn process_delete(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomError> {
+fn process_delete(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut condition = Expression::True;
     parse_delete(tokens, &mut table_name, &mut condition)?;
@@ -115,7 +115,7 @@ fn process_delete(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
     Ok(())
 }
 
-fn process_select(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomError> {
+fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
     let mut columns = vec![];
     let mut table_name = String::new();
     let mut condition = Expression::True;
@@ -162,7 +162,7 @@ fn process_select(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
 
 fn find_table_csv(directory: &Path, table_name: &str) -> Result<String, CustomError> {
     let open_dir_result = fs::read_dir(directory); // abro el directorio
-    if let Err(_) = open_dir_result {
+    if open_dir_result.is_err() {
         // si no se pudo abrir devuelvo error
         return Err(CustomError::GenericError {
             message: format!("Couldn't open directory {:?}", directory),
@@ -179,7 +179,7 @@ fn find_table_csv(directory: &Path, table_name: &str) -> Result<String, CustomEr
 
 fn handle_dir(table_name: &str, open_dir: ReadDir) -> Result<String, CustomError> {
     for entry in open_dir {
-        if let Err(_) = entry {
+        if entry.is_err() {
             // si no se pudo abrir el archivo, devuelvo error
             return Err(CustomError::GenericError {
                 message: "Couldn't open directory".to_string(),
@@ -203,7 +203,7 @@ fn handle_dir(table_name: &str, open_dir: ReadDir) -> Result<String, CustomError
                         if let Some(entry_path_to_str) = entry_path_to_str_option {
                             return Ok(entry_path_to_str.to_string());
                         }
-                        if let None = entry_path_to_str_option {
+                        if entry_path_to_str_option.is_none() {
                             return Err(CustomError::GenericError {
                                 message: "Couldn't convert path to string".to_string(),
                             });
@@ -224,9 +224,9 @@ fn open_table_path(table_path: &str) -> Result<File, CustomError> {
     if let Ok(table_file) = table_file_result {
         return Ok(table_file);
     }
-    return Err(CustomError::GenericError {
+    Err(CustomError::GenericError {
         message: "Couldn't open table file".to_string(),
-    });
+    })
 }
 
 fn copy_table(table_path: &str, writer: &mut BufWriter<File>) -> Result<Vec<String>, CustomError> {
@@ -235,7 +235,7 @@ fn copy_table(table_path: &str, writer: &mut BufWriter<File>) -> Result<Vec<Stri
     let table_reader = std::io::BufReader::new(table_file);
     let mut first_line = true;
     for line in table_reader.lines() {
-        if let Err(_) = line {
+        if line.is_err() {
             return Err(CustomError::GenericError {
                 message: "Couldn't read table file".to_string(),
             });
@@ -263,7 +263,7 @@ fn update_table(
     let table_reader = std::io::BufReader::new(table_file);
     let mut first_line = true;
     for line in table_reader.lines() {
-        if let Err(_) = line {
+        if line.is_err() {
             return CustomError::error_generic("Couldn't read table file");
         }
         if let Ok(line) = line {
@@ -291,7 +291,7 @@ fn delete_rows_table(
     let table_reader = std::io::BufReader::new(table_file);
     let mut first_line = true;
     for line in table_reader.lines() {
-        if let Err(_) = line {
+        if line.is_err() {
             return CustomError::error_generic("Couldn't read table file");
         }
         if let Ok(line) = line {
@@ -320,7 +320,7 @@ fn select_rows_table(
     let mut selected_rows = vec![];
     let mut full_columns: Vec<String> = vec![];
     for line in table_reader.lines() {
-        if let Err(_) = line {
+        if line.is_err() {
             return Err(CustomError::GenericError {
                 message: "Couldn't read table file".to_string(),
             });

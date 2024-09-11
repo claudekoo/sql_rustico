@@ -10,7 +10,7 @@ use std::collections::HashMap;
 /// El formato del comando INSERT esperado es:
 /// INSERT INTO <table_name> (<column1>, <column2>, ...) VALUES (<value1>, <value2>, ...);
 pub fn parse_insert(
-    tokens: &Vec<Token>,
+    tokens: &[Token],
     table_name: &mut String,
     columns: &mut Vec<String>,
     values: &mut Vec<HashMap<String, String>>,
@@ -55,7 +55,7 @@ fn parse_insert_into_columns(
 ) -> Result<(), CustomError> {
     if let Some(Token::Symbol('(')) = iter.peek() {
         iter.next();
-        while let Some(token) = iter.next() {
+        for token in iter.by_ref() {
             match token {
                 Token::Identifier(name) => {
                     columns.push(name.to_string());
@@ -80,7 +80,7 @@ fn parse_insert_into_columns(
 fn parse_values(
     values: &mut Vec<HashMap<String, String>>,
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
-    columns: &Vec<String>,
+    columns: &[String],
 ) -> Result<(), CustomError> {
     if let Some(Token::Keyword(keyword)) = iter.peek() {
         if keyword.as_str() == "VALUES" {
@@ -102,13 +102,13 @@ fn parse_values(
 fn parse_value(
     values: &mut Vec<HashMap<String, String>>,
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
-    columns: &Vec<String>,
+    columns: &[String],
 ) -> Result<(), CustomError> {
     let mut row: HashMap<String, String> = HashMap::new();
     if let Some(Token::Symbol('(')) = iter.peek() {
         iter.next();
         let mut column_index = 0;
-        while let Some(token) = iter.next() {
+        for token in iter.by_ref() {
             match token {
                 Token::Integer(value) | Token::String(value) => {
                     if column_index >= columns.len() {
@@ -140,7 +140,7 @@ fn parse_value(
 /// UPDATE <table_name> SET <column1> = <value1>, <column2> = <value2>, ... WHERE <condition>;
 /// donde WHERE es opcional.
 pub fn parse_update(
-    tokens: &Vec<Token>,
+    tokens: &[Token],
     table_name: &mut String,
     set_values: &mut HashMap<String, String>,
     condition: &mut Expression,
@@ -183,7 +183,7 @@ fn parse_update_set_values(
         }
     } else if let Some(Token::Symbol(';')) = iter.peek() {
         iter.next();
-        if let Some(_) = iter.peek() {
+        if iter.peek().is_some() {
             return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
         return Ok(());
@@ -229,18 +229,14 @@ fn parse_condition(
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
 ) -> Result<(), CustomError> {
     *condition = parse_expression(iter)?;
-    if let Some(token) = iter.peek() {
-        if let Token::Symbol(';') = token {
-            iter.next();
-            if let Some(_) = iter.peek() {
+    if let Some(Token::Symbol(';')) = iter.next() {
+            if iter.peek().is_some() {
                 return CustomError::error_invalid_syntax("Tokens found after ';'");
             }
-            return Ok(());
-        } else {
-            return CustomError::error_invalid_syntax("Expected ';' after WHERE condition");
+            Ok(())
         }
-    } else {
-        return CustomError::error_invalid_syntax("Expected ';' after WHERE condition");
+     else {
+        CustomError::error_invalid_syntax("Expected ';' after WHERE condition")
     }
 }
 
@@ -251,7 +247,7 @@ fn parse_condition(
 /// DELETE <table_name> WHERE <condition>;
 /// donde WHERE es opcional.
 pub fn parse_delete(
-    tokens: &Vec<Token>,
+    tokens: &[Token],
     table_name: &mut String,
     condition: &mut Expression,
 ) -> Result<(), CustomError> {
@@ -272,7 +268,7 @@ pub fn parse_delete(
         }
     } else if let Some(Token::Symbol(';')) = iter.peek() {
         iter.next();
-        if let Some(_) = iter.peek() {
+        if iter.peek().is_some() {
             return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
     } else {
@@ -288,7 +284,7 @@ pub fn parse_delete(
 /// SELECT <column1>, <column2>, ... FROM <table_name> WHERE <condition> ORDER BY <column> <order>, <column> <order>, ... ;
 /// donde WHERE y ORDER BY son opcionales.
 pub fn parse_select(
-    tokens: &Vec<Token>,
+    tokens: &[Token],
     columns: &mut Vec<String>,
     table_name: &mut String,
     condition: &mut Expression,
@@ -324,9 +320,8 @@ pub fn parse_select(
 fn check_ending_with_semicolon(
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Symbol(';')) = iter.peek() {
-        iter.next();
-        if let Some(_) = iter.peek() {
+    if let Some(Token::Symbol(';')) = iter.next() {
+        if iter.peek().is_some() {
             return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
     } else {
