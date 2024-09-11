@@ -7,9 +7,7 @@ use std::collections::HashMap;
 pub fn parse_row(columns: &Vec<String>, line: &str) -> Result<Row, CustomError> {
     let values: Vec<&str> = line.split(",").collect();
     if values.len() != columns.len() {
-        return Err(CustomError::InvalidTable {
-            message: "Columns size missmatch".to_string(),
-        });
+        CustomError::error_invalid_table("Columns size missmatch")?;
     }
     let mut row_values: HashMap<String, String> = HashMap::new();
     for (i, value) in values.iter().enumerate() {
