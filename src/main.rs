@@ -12,7 +12,7 @@ use custom_error::CustomError;
 
 /// Recibe los argumentos de la línea de comandos y los procesa.
 /// Se espera como argumentos el directorio de las tablas y el comando SQL a ejecutar.
-/// 
+///
 /// # Ejemplo
 /// ```sh
 /// cargo run tables/ "SELECT * FROM table1;"

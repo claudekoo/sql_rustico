@@ -17,7 +17,7 @@ pub enum Token {
     /// Los Identifiers son nombres de tablas o columnas, pueden ser alfanuméricos.
     Identifier(String),
     /// Los Strings son cadenas de texto llegadas entre comillas simples.
-    String(String), 
+    String(String),
     /// Los Integers son números enteros.
     Integer(String),
     /// Los Symbols son caracteres especiales, en esta implementación incluye:
@@ -131,9 +131,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
             tokens.push(Token::Symbol(ch)); // no lo modulo porque siempre es un solo caracter
             chars.next();
         } else {
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Invalid syntax near: {}", ch),
-            });
+            CustomError::error_invalid_syntax(&format!("Invalid syntax near: {}", ch))?;
         }
     }
 

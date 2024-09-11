@@ -23,3 +23,29 @@ impl fmt::Display for CustomError {
         }
     }
 }
+
+impl CustomError {
+    pub fn error_invalid_syntax(message: &str) -> Result<(), CustomError> {
+        Err(CustomError::InvalidSyntax {
+            message: message.to_string(),
+        })
+    }
+
+    pub fn error_invalid_table(message: &str) -> Result<(), CustomError> {
+        Err(CustomError::InvalidTable {
+            message: message.to_string(),
+        })
+    }
+
+    pub fn error_invalid_column(message: &str) -> Result<(), CustomError> {
+        Err(CustomError::InvalidColumn {
+            message: message.to_string(),
+        })
+    }
+
+    pub fn error_generic(message: &str) -> Result<(), CustomError> {
+        Err(CustomError::GenericError {
+            message: message.to_string(),
+        })
+    }
+}

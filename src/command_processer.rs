@@ -29,15 +29,11 @@ pub fn process_command(args: &Vec<String>) -> Result<(), CustomError> {
                 return process_select(&tokens, directory);
             }
             other => {
-                return Err(CustomError::InvalidSyntax {
-                    message: format!("Invalid command: {}", other),
-                });
+                return CustomError::error_invalid_syntax(&format!("Invalid command: {}", other));
             }
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: ("Usage: <COMMAND> <...>".to_string()),
-        });
+        return CustomError::error_invalid_syntax("Usage: <COMMAND> <...>");
     }
 }
 
@@ -75,9 +71,7 @@ fn process_insert(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
 fn remove_file(file_path: &str) -> Result<(), CustomError> {
     let remove_file_result = fs::remove_file(file_path);
     if let Err(_) = remove_file_result {
-        return Err(CustomError::GenericError {
-            message: "Couldn't remove file".to_string(),
-        });
+        return CustomError::error_generic("Couldn't remove file");
     }
     Ok(())
 }
@@ -85,9 +79,7 @@ fn remove_file(file_path: &str) -> Result<(), CustomError> {
 fn rename_file(from: &str, to: &str) -> Result<(), CustomError> {
     let rename_file_result = fs::rename(from, to);
     if let Err(_) = rename_file_result {
-        return Err(CustomError::GenericError {
-            message: "Couldn't rename file".to_string(),
-        });
+        return CustomError::error_generic("Couldn't rename file");
     }
     Ok(())
 }
@@ -156,9 +148,10 @@ fn process_select(tokens: &Vec<Token>, directory: &Path) -> Result<(), CustomErr
             if let Some(value) = row.get(column) {
                 row_values.push(value);
             } else {
-                return Err(CustomError::InvalidColumn {
-                    message: format!("No column named {} found from the table", column),
-                });
+                return CustomError::error_invalid_column(&format!(
+                    "No column named {} found from the table",
+                    column
+                ));
             }
         }
         let row_values_str: Vec<&str> = row_values.iter().map(|string| string.as_str()).collect();
@@ -271,9 +264,7 @@ fn update_table(
     let mut first_line = true;
     for line in table_reader.lines() {
         if let Err(_) = line {
-            return Err(CustomError::GenericError {
-                message: "Couldn't read table file".to_string(),
-            });
+            return CustomError::error_generic("Couldn't read table file");
         }
         if let Ok(line) = line {
             if first_line {
@@ -301,9 +292,7 @@ fn delete_rows_table(
     let mut first_line = true;
     for line in table_reader.lines() {
         if let Err(_) = line {
-            return Err(CustomError::GenericError {
-                message: "Couldn't read table file".to_string(),
-            });
+            return CustomError::error_generic("Couldn't read table file");
         }
         if let Ok(line) = line {
             if first_line {

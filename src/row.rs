@@ -4,18 +4,19 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
-/// Una fila en esta implementación es un conjunto de valrores asociados a columnas. Convenientemente tiene un vector de columnas además de un HashMap de valores para tener referencias a columnas que no existen en su tabla de valores.
+/// Valor por defecto para una columna vacía.
+const DEFAULT_VALUE: &str = "";
+
+/// Una fila en esta implementación es un conjunto de valrores asociados a columnas. Convenientemente tiene un vector de columnas además de un HashMap de valores para tener referencia de orden de las columnas.
 /// Puede escribirse en un archivo CSV actualizando su estado según una condición dada.
 pub struct Row {
-    columns: Vec<String>,
+    columns_in_order: Vec<String>,
     values: HashMap<String, String>,
 }
 
 fn write_result(writer: &mut BufWriter<File>, string: &str) -> Result<(), CustomError> {
     if let Err(error) = write!(writer, "{}", string) {
-        return Err(CustomError::GenericError {
-            message: format!("Error writing to file: {}", error),
-        });
+        CustomError::error_generic(&format!("Error writing to file: {}", error))?;
     }
     Ok(())
 }
@@ -23,26 +24,27 @@ fn write_result(writer: &mut BufWriter<File>, string: &str) -> Result<(), Custom
 impl Row {
     /// Crea una nueva fila dado un vector de columnas y un HashMap de valores.
     pub fn new(columns: &Vec<String>, values: HashMap<String, String>) -> Row {
-        let mut new_columns = Vec::new();
+        let mut columns_in_order = Vec::new();
         for item in columns.iter() {
-            new_columns.push(item.to_string());
+            columns_in_order.push(item.to_string());
         }
         Row {
-            columns: new_columns,
+            columns_in_order,
             values,
         }
     }
 
     /// Se escribe a un archivo CSV.
     pub fn write_row(&self, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
-        let last_index = self.columns.len() - 1;
+        let last_index = self.columns_in_order.len() - 1;
         let mut actual_index = 0;
-        for column in &self.columns {
+
+        for column in &self.columns_in_order {
             let value_option = self.values.get(column);
             if let Some(value) = value_option {
                 write_result(writer, value)?;
             } else {
-                write_result(writer, "")?;
+                write_result(writer, DEFAULT_VALUE)?;
             }
             if actual_index != last_index {
                 write_result(writer, ",")?;
@@ -113,8 +115,6 @@ fn update_if_present(
         map.insert(key.to_string(), value.to_string());
         Ok(())
     } else {
-        Err(CustomError::InvalidColumn {
-            message: "Column does not exist".to_string(),
-        })
+        CustomError::error_invalid_column("Column does not exist")
     }
 }

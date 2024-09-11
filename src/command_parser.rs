@@ -17,24 +17,14 @@ pub fn parse_insert(
 ) -> Result<(), CustomError> {
     let mut iter = tokens.iter().peekable();
     iter.next(); // salteo el INSERT
-    if let Some(token) = iter.next() {
-        if let Token::Keyword(keyword) = token {
-            if keyword.as_str() == "INTO" {
-                parse_insert_from_into(table_name, columns, values, &mut iter)?;
-            } else {
-                return Err(CustomError::InvalidSyntax {
-                    message: format!("Expected INTO after INSERT"),
-                });
-            }
+    if let Some(Token::Keyword(keyword)) = iter.next() {
+        if keyword.as_str() == "INTO" {
+            parse_insert_from_into(table_name, columns, values, &mut iter)?;
         } else {
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Expected INTO after INSERT"),
-            });
+            return CustomError::error_invalid_syntax("Expected INTO after INSERT");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected INTO after INSERT"),
-        });
+        return CustomError::error_invalid_syntax("Expected INTO after INSERT");
     }
     Ok(())
 }
@@ -51,16 +41,15 @@ fn parse_insert_from_into(
     } else if let Some(Token::String(name)) = name_option {
         *table_name = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected table name after INTO"),
-        });
+        return CustomError::error_invalid_syntax("Expected table name after INTO");
     }
-    parse_insert_columns(columns, iter)?;
+    parse_insert_into_columns(columns, iter)?;
     parse_values(values, iter, columns)?;
+    check_ending_with_semicolon(iter)?;
     Ok(())
 }
 
-fn parse_insert_columns(
+fn parse_insert_into_columns(
     columns: &mut Vec<String>,
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
 ) -> Result<(), CustomError> {
@@ -72,28 +61,15 @@ fn parse_insert_columns(
                     columns.push(name.to_string());
                 }
                 Token::Symbol(')') => {
-                    if let Some(Token::Keyword(keyword)) = iter.peek() {
-                        if keyword.as_str() == "VALUES" {
-                            iter.next();
-                            break;
-                        } else {
-                            return Err(CustomError::InvalidSyntax {
-                                message: format!("Expected VALUES after column names"),
-                            });
-                        }
-                    } else {
-                        return Err(CustomError::InvalidSyntax {
-                            message: format!("Expected VALUES after column names"),
-                        });
-                    }
+                    break;
                 }
                 Token::Symbol(',') => {
                     // deberia chequear que su siguiente sea un nombre de columna
                 }
                 _ => {
-                    return Err(CustomError::InvalidSyntax {
-                        message: format!("Expected column name or ')' after '('"),
-                    });
+                    return CustomError::error_invalid_syntax(
+                        "Expected column name or ')' after '('",
+                    );
                 }
             }
         }
@@ -106,18 +82,21 @@ fn parse_values(
     iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
     columns: &Vec<String>,
 ) -> Result<(), CustomError> {
+    if let Some(Token::Keyword(keyword)) = iter.peek() {
+        if keyword.as_str() == "VALUES" {
+            iter.next();
+        } else {
+            return CustomError::error_invalid_syntax("Expected VALUES after column names");
+        }
+    } else {
+        return CustomError::error_invalid_syntax("Expected VALUES after column names");
+    }
     parse_value(values, iter, columns)?;
     while let Some(Token::Symbol(',')) = iter.peek() {
         iter.next();
         parse_value(values, iter, columns)?;
     }
-    if let Some(Token::Symbol(';')) = iter.peek() {
-        return Ok(());
-    } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected ';' after VALUES"),
-        });
-    }
+    Ok(())
 }
 
 fn parse_value(
@@ -133,9 +112,7 @@ fn parse_value(
             match token {
                 Token::Integer(value) | Token::String(value) => {
                     if column_index >= columns.len() {
-                        return Err(CustomError::InvalidSyntax {
-                            message: format!("Too many values for columns"),
-                        });
+                        return CustomError::error_invalid_syntax("Too many values for columns");
                     }
                     row.insert(columns[column_index].to_string(), value.to_string());
                     column_index += 1;
@@ -148,9 +125,7 @@ fn parse_value(
                     break;
                 }
                 _ => {
-                    return Err(CustomError::InvalidSyntax {
-                        message: format!("Expected value or ')' after '('"),
-                    });
+                    return CustomError::error_invalid_syntax("Expected value or ')' after '('");
                 }
             }
         }
@@ -178,20 +153,14 @@ pub fn parse_update(
     } else if let Some(Token::String(name)) = name_option {
         *table_name = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected table name after UPDATE"),
-        });
+        return CustomError::error_invalid_syntax("Expected table name after UPDATE");
     }
     if let Some(Token::Keyword(keyword)) = iter.next() {
         if keyword.as_str() != "SET" {
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Expected SET after table name"),
-            });
+            return CustomError::error_invalid_syntax("Expected SET after table name");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected SET after table name"),
-        });
+        return CustomError::error_invalid_syntax("Expected SET after table name");
     }
     parse_update_set_values(set_values, condition, &mut iter)?;
     Ok(())
@@ -215,15 +184,11 @@ fn parse_update_set_values(
     } else if let Some(Token::Symbol(';')) = iter.peek() {
         iter.next();
         if let Some(_) = iter.peek() {
-            return Err(CustomError::InvalidSyntax {
-                message: "Tokens found after ';'".to_string(),
-            });
+            return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
         return Ok(());
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected WHERE or ';' after set values"),
-        });
+        return CustomError::error_invalid_syntax("Expected WHERE or ';' after set values");
     }
     Ok(())
 }
@@ -237,9 +202,7 @@ fn parse_set_value(
     if let Some(Token::Identifier(name)) = iter.next() {
         column = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected column name to set value after SET"),
-        });
+        return CustomError::error_invalid_syntax("Expected column name to set value after SET");
     }
     if let Some(Token::ComparisonOperator(keyword)) = iter.next() {
         if keyword.as_str() == "=" {
@@ -248,19 +211,13 @@ fn parse_set_value(
             } else if let Some(Token::String(string)) = iter.peek() {
                 value = string.to_string();
             } else {
-                return Err(CustomError::InvalidSyntax {
-                    message: format!("Expected value after '='"),
-                });
+                return CustomError::error_invalid_syntax("Expected value after '='");
             }
         } else {
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Expected '=' after column name"),
-            });
+            return CustomError::error_invalid_syntax("Expected '=' after column name");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected '=' after column name"),
-        });
+        return CustomError::error_invalid_syntax("Expected '=' after column name");
     }
     iter.next();
     set_values.insert(column, value);
@@ -276,20 +233,14 @@ fn parse_condition(
         if let Token::Symbol(';') = token {
             iter.next();
             if let Some(_) = iter.peek() {
-                return Err(CustomError::InvalidSyntax {
-                    message: "Tokens found after ';'".to_string(),
-                });
+                return CustomError::error_invalid_syntax("Tokens found after ';'");
             }
             return Ok(());
         } else {
-            return Err(CustomError::InvalidSyntax {
-                message: "Expected ';' after WHERE condition".to_string(),
-            });
+            return CustomError::error_invalid_syntax("Expected ';' after WHERE condition");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: "Expected ';' after WHERE condition".to_string(),
-        });
+        return CustomError::error_invalid_syntax("Expected ';' after WHERE condition");
     }
 }
 
@@ -312,9 +263,7 @@ pub fn parse_delete(
     } else if let Some(Token::String(name)) = name_option {
         *table_name = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected table name after DELETE"),
-        });
+        return CustomError::error_invalid_syntax("Expected table name after DELETE");
     }
     if let Some(Token::Keyword(keyword)) = iter.peek() {
         if keyword.as_str() == "WHERE" {
@@ -324,23 +273,14 @@ pub fn parse_delete(
     } else if let Some(Token::Symbol(';')) = iter.peek() {
         iter.next();
         if let Some(_) = iter.peek() {
-            return Err(CustomError::InvalidSyntax {
-                message: "Tokens found after ';'".to_string(),
-            });
+            return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected WHERE or ';' after set values"),
-        });
+        return CustomError::error_invalid_syntax("Expected WHERE or ';' after table name");
     }
     Ok(())
 }
 
-// SELECT: tablename obligatorio, condition y order_by opcional
-// SELECT id, nombre, email
-// FROM clientes
-// WHERE apellido = 'López'
-// ORDER BY email DESC;
 /// Parsea un comando SELECT que llega en forma de vector de tokens.
 /// Modifica los parametros columns, table_name, condition y order_by.
 ///
@@ -369,29 +309,28 @@ pub fn parse_select(
             iter.next();
             if let Some(Token::Keyword(keyword)) = iter.next() {
                 if keyword.as_str() != "BY" {
-                    return Err(CustomError::InvalidSyntax {
-                        message: format!("Expected BY after ORDER"),
-                    });
+                    return CustomError::error_invalid_syntax("Expected BY after ORDER");
                 }
             } else {
-                return Err(CustomError::InvalidSyntax {
-                    message: format!("Expected BY after ORDER"),
-                });
+                return CustomError::error_invalid_syntax("Expected BY after ORDER");
             }
             parse_order(order_by, &mut iter)?;
         }
     }
+    check_ending_with_semicolon(&mut iter)?;
+    Ok(())
+}
+
+fn check_ending_with_semicolon(
+    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+) -> Result<(), CustomError> {
     if let Some(Token::Symbol(';')) = iter.peek() {
         iter.next();
         if let Some(_) = iter.peek() {
-            return Err(CustomError::InvalidSyntax {
-                message: "Tokens found after ';'".to_string(),
-            });
+            return CustomError::error_invalid_syntax("Tokens found after ';'");
         }
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected ';' after SELECT statement"),
-        });
+        return CustomError::error_invalid_syntax("Expected ';' at the end of the command");
     }
     Ok(())
 }
@@ -408,9 +347,7 @@ fn parse_select_columns(
                 iter.next();
                 return Ok(());
             }
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Expected FROM <tablename> after '*'"),
-            });
+            return CustomError::error_invalid_syntax("Expected FROM <tablename> after '*'");
         }
     }
     while let Some(token) = iter.next() {
@@ -423,18 +360,18 @@ fn parse_select_columns(
                     iter.next();
                     break;
                 } else {
-                    return Err(CustomError::InvalidSyntax {
-                        message: format!("Expected FROM <tablename> after column names"),
-                    });
+                    return CustomError::error_invalid_syntax(
+                        "Expected column name or FROM <tablename> after column names",
+                    );
                 }
             }
             Token::Symbol(',') => {
                 // deberia chequear que su siguiente sea un nombre de columna
             }
             _ => {
-                return Err(CustomError::InvalidSyntax {
-                    message: format!("Expected column name or FROM <tablename> after column names"),
-                });
+                return CustomError::error_invalid_syntax(
+                    "Expected column name or FROM <tablename> after column names",
+                );
             }
         }
     }
@@ -451,9 +388,7 @@ fn parse_select_from(
     } else if let Some(Token::String(name)) = name_option {
         *table_name = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected table name after FROM"),
-        });
+        return CustomError::error_invalid_syntax("Expected table name after FROM");
     }
     Ok(())
 }
@@ -479,18 +414,14 @@ fn parse_order_by_column(
     if let Some(Token::Identifier(name)) = iter.next() {
         order_by_column = name.to_string();
     } else {
-        return Err(CustomError::InvalidSyntax {
-            message: format!("Expected column name after ORDER BY or ','"),
-        });
+        return CustomError::error_invalid_syntax("Expected column name after ORDER BY or ','");
     }
     if let Some(Token::Keyword(keyword)) = iter.peek() {
         if keyword.as_str() == "DESC" {
             iter.next();
             order_by_tuple = (order_by_column, "DESC".to_string());
         } else {
-            return Err(CustomError::InvalidSyntax {
-                message: format!("Expected DESC or nothing after column name"),
-            });
+            return CustomError::error_invalid_syntax("Expected DESC or nothing after column name");
         }
     } else {
         order_by_tuple = (order_by_column, "ASC".to_string());
