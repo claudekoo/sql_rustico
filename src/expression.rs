@@ -1,7 +1,7 @@
 use super::custom_error::CustomError;
 use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Una expresión puede ser evaluada como verdadera o falsa.
 pub enum Expression {
     True,
@@ -25,7 +25,7 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Los operandos son la unidadad mínima de una expresión en esta implementación.
 /// Pueden ser columnas, que consultan el valor de una columna en una fila, o valores literales limitados a Strings e Integers.
 pub enum Operand {
@@ -94,5 +94,66 @@ fn evaluate_operand(
         }
         Operand::String(value) => Ok(value.to_string()),
         Operand::Integer(value) => Ok(value.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_evaluate_expression() {
+        let mut row = HashMap::new();
+        row.insert("column1".to_string(), "value1".to_string());
+        row.insert("column2".to_string(), "value2".to_string());
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), true);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value2".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), false);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "!=".to_string(),
+            right: Operand::String("value2".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), true);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: ">".to_string(),
+            right: Operand::String("value2".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), false);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: ">=".to_string(),
+            right: Operand::String("value2".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), false);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: ">=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), true);
+
+        let expression = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "<".to_string(),
+            right: Operand::String("value2".to_string()),
+        };
+        assert_eq!(evaluate_expression(&expression, &row).unwrap(), true);
     }
 }

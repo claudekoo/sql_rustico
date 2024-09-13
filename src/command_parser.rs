@@ -3,6 +3,8 @@ use super::expression::Expression;
 use super::expression_parser::parse_expression;
 use super::tokenizer::Token;
 use std::collections::HashMap;
+use std::iter::Peekable;
+use std::slice::Iter;
 
 /// Parsea un comando INSERT que llega en forma de vector de tokens.
 /// Modifica los parametros table_name, columns y values.
@@ -33,7 +35,7 @@ fn parse_insert_from_into(
     table_name: &mut String,
     columns: &mut Vec<String>,
     values: &mut Vec<HashMap<String, String>>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     let name_option = iter.next();
     if let Some(Token::Identifier(name)) = name_option {
@@ -51,7 +53,7 @@ fn parse_insert_from_into(
 
 fn parse_insert_into_columns(
     columns: &mut Vec<String>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     if let Some(Token::Symbol('(')) = iter.peek() {
         iter.next();
@@ -79,7 +81,7 @@ fn parse_insert_into_columns(
 
 fn parse_values(
     values: &mut Vec<HashMap<String, String>>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
     columns: &[String],
 ) -> Result<(), CustomError> {
     if let Some(Token::Keyword(keyword)) = iter.peek() {
@@ -101,7 +103,7 @@ fn parse_values(
 
 fn parse_value(
     values: &mut Vec<HashMap<String, String>>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
     columns: &[String],
 ) -> Result<(), CustomError> {
     let mut row: HashMap<String, String> = HashMap::new();
@@ -169,7 +171,7 @@ pub fn parse_update(
 fn parse_update_set_values(
     set_values: &mut HashMap<String, String>,
     condition: &mut Expression,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     parse_set_value(set_values, iter)?;
     while let Some(Token::Symbol(',')) = iter.peek() {
@@ -195,7 +197,7 @@ fn parse_update_set_values(
 
 fn parse_set_value(
     set_values: &mut HashMap<String, String>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     let column: String;
     let value: String;
@@ -226,7 +228,7 @@ fn parse_set_value(
 
 fn parse_condition(
     condition: &mut Expression,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     *condition = parse_expression(iter)?;
     if let Some(Token::Symbol(';')) = iter.next() {
@@ -318,7 +320,7 @@ pub fn parse_select(
 }
 
 fn check_ending_with_semicolon(
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     if let Some(Token::Symbol(';')) = iter.next() {
         if iter.peek().is_some() {
@@ -332,7 +334,7 @@ fn check_ending_with_semicolon(
 
 fn parse_select_columns(
     columns: &mut Vec<String>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     if let Some(Token::Symbol('*')) = iter.peek() {
         // si columns esta vacio, se seleccionan todas las columnas
@@ -375,7 +377,7 @@ fn parse_select_columns(
 
 fn parse_select_from(
     table_name: &mut String,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     let name_option = iter.next();
     if let Some(Token::Identifier(name)) = name_option {
@@ -390,7 +392,7 @@ fn parse_select_from(
 
 fn parse_order(
     order_by: &mut Vec<(String, String)>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     parse_order_by_column(order_by, iter)?;
     while let Some(Token::Symbol(',')) = iter.peek() {
@@ -402,7 +404,7 @@ fn parse_order(
 
 fn parse_order_by_column(
     order_by: &mut Vec<(String, String)>,
-    iter: &mut std::iter::Peekable<std::slice::Iter<Token>>,
+    iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
     let order_by_tuple: (String, String);
     let order_by_column: String;
@@ -423,4 +425,200 @@ fn parse_order_by_column(
     }
     order_by.push(order_by_tuple);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::expression::Operand;
+
+    #[test]
+    fn test_parse_insert() {
+        let tokens = vec![
+            Token::Keyword("INSERT".to_string()),
+            Token::Keyword("INTO".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Symbol('('),
+            Token::Identifier("column1".to_string()),
+            Token::Identifier("column2".to_string()),
+            Token::Symbol(')'),
+            Token::Keyword("VALUES".to_string()),
+            Token::Symbol('('),
+            Token::String("value1".to_string()),
+            Token::Symbol(','),
+            Token::String("value2".to_string()),
+            Token::Symbol(')'),
+            Token::Symbol(';'),
+        ];
+        let mut table_name = String::new();
+        let mut columns = Vec::new();
+        let mut values = Vec::new();
+
+        let result = parse_insert(&tokens, &mut table_name, &mut columns, &mut values);
+
+        assert!(result.is_ok());
+        assert_eq!(table_name, "table");
+        assert_eq!(columns, vec![
+            "column1".to_string(),
+            "column2".to_string(),
+        ]);
+        assert_eq!(values, vec![{
+            let mut row = HashMap::new();
+            row.insert("column1".to_string(), "value1".to_string());
+            row.insert("column2".to_string(), "value2".to_string());
+            row
+        }]);
+    }
+
+    #[test]
+    fn test_parse_insert_invalid_syntax() {
+        let tokens = vec![
+            Token::Keyword("INSERT".to_string()),
+            Token::Keyword("INTO".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Symbol(')'),
+            Token::Keyword("VALUES".to_string()),
+            Token::Symbol('('),
+            Token::String("value1".to_string()),
+            Token::Symbol(','),
+            Token::String("value2".to_string()),
+            Token::Symbol(')'),
+        ];
+        let mut table_name = String::new();
+        let mut columns = Vec::new();
+        let mut values = Vec::new();
+
+        let result = parse_insert(&tokens, &mut table_name, &mut columns, &mut values);
+
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), CustomError::InvalidSyntax { message: "Expected VALUES after column names".to_string() });
+    }
+
+    #[test]
+    fn test_parse_update() {
+        let tokens = vec![
+            Token::Keyword("UPDATE".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Keyword("SET".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+            Token::Symbol(','),
+            Token::Identifier("column2".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value2".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column3".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value3".to_string()),
+            Token::Symbol(';'),
+        ];
+        let mut table_name = String::new();
+        let mut set_values = HashMap::new();
+        let mut condition = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+
+        let result = parse_update(&tokens, &mut table_name, &mut set_values, &mut condition);
+
+        assert!(result.is_ok());
+        assert_eq!(table_name, "table");
+        assert_eq!(set_values, {
+            let mut set_values = HashMap::new();
+            set_values.insert("column1".to_string(), "value1".to_string());
+            set_values.insert("column2".to_string(), "value2".to_string());
+            set_values
+        });
+        assert_eq!(condition, Expression::Comparison {
+            left: Operand::Column("column3".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value3".to_string()),
+        });
+    }
+
+    #[test]
+    fn test_parse_update_invalid_syntax() {
+        let tokens = vec![
+            Token::Keyword("UPDATE".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Keyword("SET".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+            Token::Symbol(','),
+            Token::Identifier("column2".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value2".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column3".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value3".to_string()),
+        ];
+        let mut table_name = String::new();
+        let mut set_values = HashMap::new();
+        let mut condition = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+
+        let result = parse_update(&tokens, &mut table_name, &mut set_values, &mut condition);
+        assert!(result.is_err());
+
+        assert_eq!(result.err().unwrap(), CustomError::InvalidSyntax { message: "Expected ';' after WHERE condition".to_string() });
+    }
+
+    #[test]
+    fn test_parse_delete() {
+        let tokens = vec![
+            Token::Keyword("DELETE".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+            Token::Symbol(';'),
+        ];
+        let mut table_name = String::new();
+        let mut condition = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+
+        let result = parse_delete(&tokens, &mut table_name, &mut condition);
+
+        assert!(result.is_ok());
+        assert_eq!(table_name, "table");
+        assert_eq!(condition, Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        });
+    }
+
+    #[test]
+    fn test_parse_delete_invalid_syntax() {
+        let tokens = vec![
+            Token::Keyword("DELETE".to_string()),
+            Token::Identifier("table".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+        ];
+        let mut table_name = String::new();
+        let mut condition = Expression::Comparison {
+            left: Operand::Column("column1".to_string()),
+            operator: "=".to_string(),
+            right: Operand::String("value1".to_string()),
+        };
+
+        let result = parse_delete(&tokens, &mut table_name, &mut condition);
+
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), CustomError::InvalidSyntax { message: "Expected ';' after WHERE condition".to_string() });
+    }
 }

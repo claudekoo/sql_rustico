@@ -16,3 +16,17 @@ pub fn parse_row(columns: &[String], line: &str) -> Result<Row, CustomError> {
     let row = Row::new(columns, row_values);
     Ok(row)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_row_invalid_columns_size() {
+        let columns = vec!["column1".to_string(), "column2".to_string()];
+        let line = format!("{},{},{}", "value1", "value2", "value3");
+        let result = parse_row(&columns, &line);
+        assert!(result.is_err());
+        assert_eq!(result.err().unwrap(), CustomError::InvalidTable {message: "Columns size missmatch".to_string()});
+    }
+}

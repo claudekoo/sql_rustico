@@ -116,3 +116,136 @@ fn update_if_present(
         CustomError::error_invalid_column("Column does not exist")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::super::expression::Operand;
+
+    const COLULMN1: &str = "column1";
+    const COLUMN2: &str = "column2";
+    const VALUE1: &str = "value1";
+    const VALUE2: &str = "value2";
+    const NEWVALUE1: &str = "new_value1";
+
+    fn create_row_with_columns() -> Row {
+        let columns = vec![COLULMN1.to_string(), COLUMN2.to_string()];
+        let mut values = HashMap::new();
+        values.insert(COLULMN1.to_string(), COLULMN1.to_string());
+        values.insert(COLUMN2.to_string(), COLUMN2.to_string());
+        Row::new(&columns, values)
+    }
+
+    fn create_row_with_values() -> Row {
+        let columns = vec![COLULMN1.to_string(), COLUMN2.to_string()];
+        let mut values = HashMap::new();
+        values.insert(COLULMN1.to_string(), VALUE1.to_string());
+        values.insert(COLUMN2.to_string(), VALUE2.to_string());
+        Row::new(&columns, values)
+    }
+
+    #[test]
+    fn test_new_row() {
+        let columns = vec![COLULMN1.to_string(), COLUMN2.to_string()];
+        let values = HashMap::new();
+        let row = Row::new(&columns, values);
+        assert_eq!(row.columns_in_order, columns);
+        assert_eq!(row.values, HashMap::new());
+    }
+
+    #[test]
+    fn test_write_row() {
+        let row = create_row_with_values();
+
+        let test_path = &format!("{:?}", std::thread::current().id());
+        let file = File::create(test_path).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        row.write_row(&mut writer).unwrap();
+        writer.flush().unwrap();
+        let contents = std::fs::read_to_string(test_path).unwrap();
+        std::fs::remove_file(test_path).unwrap();
+
+        assert_eq!(contents, format!("{},{}\n", VALUE1, VALUE2));
+    }
+
+    #[test]
+    fn test_update_row() {
+        let mut row_not_to_update = create_row_with_columns();
+        let mut row_to_update = create_row_with_values();
+        
+        let test_path = &format!("{:?}", std::thread::current().id());
+        let file = File::create(test_path).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        let mut update_values = HashMap::new();
+        update_values.insert(COLULMN1.to_string(), NEWVALUE1.to_string());
+        let condition = Expression::Comparison
+            {left: Operand::Column(COLULMN1.to_string()), 
+            operator: "=".to_string(), 
+            right: Operand::String(VALUE1.to_string())};
+        
+        row_not_to_update.update_row(&update_values, &condition, &mut writer).unwrap();    
+        row_to_update.update_row(&update_values, &condition, &mut writer).unwrap();
+        writer.flush().unwrap();
+        let contents = std::fs::read_to_string(test_path).unwrap();
+        std::fs::remove_file(test_path).unwrap();
+
+        assert_eq!(contents, format!("{},{}\n{},{}\n", COLULMN1, COLUMN2, NEWVALUE1, VALUE2));
+    }
+
+    #[test]
+    fn test_delete_row() {
+        let row_not_to_delete = create_row_with_columns();
+        let row_to_delete = create_row_with_values();
+
+        let test_path = &format!("{:?}", std::thread::current().id());
+        let file = File::create(test_path).unwrap();
+        let mut writer = BufWriter::new(file);
+
+        let condition = Expression::Comparison 
+            {left: Operand::Column(COLULMN1.to_string()), 
+            operator: "=".to_string(), 
+            right: Operand::String(VALUE1.to_string())};
+        
+        row_not_to_delete.delete_row(&condition, &mut writer).unwrap();
+        row_to_delete.delete_row(&condition, &mut writer).unwrap();
+        writer.flush().unwrap();
+        let contents = std::fs::read_to_string(test_path).unwrap();
+        std::fs::remove_file(test_path).unwrap();
+
+        assert_eq!(contents, format!("{},{}\n", COLULMN1, COLUMN2));
+    }
+
+    #[test]
+    fn test_check_condition() {
+        let row_true = create_row_with_values();
+        let row_false = create_row_with_columns();
+        let condition = Expression::Comparison 
+            {left: Operand::Column(COLULMN1.to_string()), 
+            operator: "=".to_string(), 
+            right: Operand::String(VALUE1.to_string())};
+        
+        let result_true = row_true.check_condition(&condition).unwrap();
+        let result_false = row_false.check_condition(&condition).unwrap();
+        
+        assert_eq!(result_true, true);
+        assert_eq!(result_false, false);
+    }
+
+    #[test]
+    fn test_hashmap() {
+        let columns = vec![COLULMN1.to_string(), COLUMN2.to_string()];
+        let mut values = HashMap::new();
+        let mut same_values: HashMap<String, String> = HashMap::new();
+        values.insert(COLULMN1.to_string(), VALUE1.to_string());
+        values.insert(COLUMN2.to_string(), VALUE2.to_string());
+        same_values.insert(COLULMN1.to_string(), VALUE1.to_string());
+        same_values.insert(COLUMN2.to_string(), VALUE2.to_string());
+        let row = Row::new(&columns, values);
+        
+        let hashmap = row.hashmap();
+
+        assert_eq!(hashmap, same_values);
+    }
+}

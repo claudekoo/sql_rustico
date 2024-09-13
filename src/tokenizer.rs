@@ -2,7 +2,7 @@ use super::custom_error::CustomError;
 use std::iter::Peekable;
 use std::str::Chars;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Los Tokens son la unidad mínima de un comando SQL existen para facilitar su parseo.
 pub enum Token {
     /// Los Keywords son palabras clave de un comando SQL, esta implementación incluye:
@@ -36,6 +36,8 @@ fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Cha
                 if ch.is_alphanumeric() {
                     token_value.push(ch);
                     chars.next();
+                } else {
+                    break;
                 }
             }
             return Token::Identifier(token_value);
@@ -134,6 +136,48 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
             CustomError::error_invalid_syntax(&format!("Invalid syntax near: {}", ch))?;
         }
     }
-
     Ok(tokens)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tokenize() {
+        let input = "SELECT * FROM table1 WHERE column1 = 'value1';";
+        let expected_output = vec![
+            Token::Keyword("SELECT".to_string()),
+            Token::Symbol('*'),
+            Token::Keyword("FROM".to_string()),
+            Token::Identifier("table1".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+            Token::Symbol(';'),
+        ];
+        assert_eq!(tokenize(input).unwrap(), expected_output);
+    }
+
+    #[test]
+    fn test_tokenize_with_identifies_starting_with_number() {
+        let input = "SELECT * FROM table1 WHERE column1 = 'value1' AND 1column = 'value2';";
+        let expected_output = vec![
+            Token::Keyword("SELECT".to_string()),
+            Token::Symbol('*'),
+            Token::Keyword("FROM".to_string()),
+            Token::Identifier("table1".to_string()),
+            Token::Keyword("WHERE".to_string()),
+            Token::Identifier("column1".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value1".to_string()),
+            Token::LogicalOperator("AND".to_string()),
+            Token::Identifier("1column".to_string()),
+            Token::ComparisonOperator("=".to_string()),
+            Token::String("value2".to_string()),
+            Token::Symbol(';'),
+        ];
+        assert_eq!(tokenize(input).unwrap(), expected_output);
+    }
 }

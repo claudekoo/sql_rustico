@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 /// Tipo de error personalizado para el programa.
 pub enum CustomError {
     /// Error relacionados con lecctura de tablas.
