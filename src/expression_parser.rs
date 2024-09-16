@@ -7,15 +7,11 @@ use std::slice::Iter;
 /// Parseauna expresión lógica dado un iterador de tokens, retornando un Expression que se estructura en forma de árbol.
 /// El orden de precedencia de los operadores lógicos es el siguiente:
 /// NOT, AND, OR
-pub fn parse_expression(
-    tokens: &mut Peekable<Iter<Token>>,
-) -> Result<Expression, CustomError> {
+pub fn parse_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
     parse_or_expression(tokens)
 }
 
-fn parse_or_expression(
-    tokens: &mut Peekable<Iter<Token>>,
-) -> Result<Expression, CustomError> {
+fn parse_or_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
     let mut expression = parse_and_expression(tokens)?;
     while let Some(Token::LogicalOperator(op)) = tokens.peek() {
         if op == "OR" {
@@ -32,9 +28,7 @@ fn parse_or_expression(
     Ok(expression)
 }
 
-fn parse_and_expression(
-    tokens: &mut Peekable<Iter<Token>>,
-) -> Result<Expression, CustomError> {
+fn parse_and_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
     let mut expression = parse_not_expression(tokens)?;
     while let Some(Token::LogicalOperator(op)) = tokens.peek() {
         if op == "AND" {
@@ -51,9 +45,7 @@ fn parse_and_expression(
     Ok(expression)
 }
 
-fn parse_not_expression(
-    tokens: &mut Peekable<Iter<Token>>,
-) -> Result<Expression, CustomError> {
+fn parse_not_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
     if let Some(Token::LogicalOperator(op)) = tokens.peek() {
         if op == "NOT" {
             tokens.next();
@@ -66,9 +58,7 @@ fn parse_not_expression(
     parse_primary_expression(tokens)
 }
 
-fn parse_primary_expression(
-    tokens: &mut Peekable<Iter<Token>>,
-) -> Result<Expression, CustomError> {
+fn parse_primary_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
     if let Some(Token::Symbol('(')) = tokens.peek() {
         tokens.next();
         let expression = parse_expression(tokens)?;
@@ -180,7 +170,7 @@ mod tests {
         ];
 
         let result = parse_expression(&mut tokens.iter().peekable());
-        
+
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap(),

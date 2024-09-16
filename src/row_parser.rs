@@ -27,6 +27,11 @@ mod tests {
         let line = format!("{},{},{}", "value1", "value2", "value3");
         let result = parse_row(&columns, &line);
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap(), CustomError::InvalidTable {message: "Columns size missmatch".to_string()});
+        assert_eq!(
+            result.err().unwrap(),
+            CustomError::InvalidTable {
+                message: "Columns size missmatch".to_string()
+            }
+        );
     }
 }

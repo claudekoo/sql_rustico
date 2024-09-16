@@ -119,8 +119,8 @@ fn update_if_present(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::expression::Operand;
+    use super::*;
 
     const COLULMN1: &str = "column1";
     const COLUMN2: &str = "column2";
@@ -173,25 +173,33 @@ mod tests {
     fn test_update_row() {
         let mut row_not_to_update = create_row_with_columns();
         let mut row_to_update = create_row_with_values();
-        
+
         let test_path = &format!("{:?}", std::thread::current().id());
         let file = File::create(test_path).unwrap();
         let mut writer = BufWriter::new(file);
 
         let mut update_values = HashMap::new();
         update_values.insert(COLULMN1.to_string(), NEWVALUE1.to_string());
-        let condition = Expression::Comparison
-            {left: Operand::Column(COLULMN1.to_string()), 
-            operator: "=".to_string(), 
-            right: Operand::String(VALUE1.to_string())};
-        
-        row_not_to_update.update_row(&update_values, &condition, &mut writer).unwrap();    
-        row_to_update.update_row(&update_values, &condition, &mut writer).unwrap();
+        let condition = Expression::Comparison {
+            left: Operand::Column(COLULMN1.to_string()),
+            operator: "=".to_string(),
+            right: Operand::String(VALUE1.to_string()),
+        };
+
+        row_not_to_update
+            .update_row(&update_values, &condition, &mut writer)
+            .unwrap();
+        row_to_update
+            .update_row(&update_values, &condition, &mut writer)
+            .unwrap();
         writer.flush().unwrap();
         let contents = std::fs::read_to_string(test_path).unwrap();
         std::fs::remove_file(test_path).unwrap();
 
-        assert_eq!(contents, format!("{},{}\n{},{}\n", COLULMN1, COLUMN2, NEWVALUE1, VALUE2));
+        assert_eq!(
+            contents,
+            format!("{},{}\n{},{}\n", COLULMN1, COLUMN2, NEWVALUE1, VALUE2)
+        );
     }
 
     #[test]
@@ -203,12 +211,15 @@ mod tests {
         let file = File::create(test_path).unwrap();
         let mut writer = BufWriter::new(file);
 
-        let condition = Expression::Comparison 
-            {left: Operand::Column(COLULMN1.to_string()), 
-            operator: "=".to_string(), 
-            right: Operand::String(VALUE1.to_string())};
-        
-        row_not_to_delete.delete_row(&condition, &mut writer).unwrap();
+        let condition = Expression::Comparison {
+            left: Operand::Column(COLULMN1.to_string()),
+            operator: "=".to_string(),
+            right: Operand::String(VALUE1.to_string()),
+        };
+
+        row_not_to_delete
+            .delete_row(&condition, &mut writer)
+            .unwrap();
         row_to_delete.delete_row(&condition, &mut writer).unwrap();
         writer.flush().unwrap();
         let contents = std::fs::read_to_string(test_path).unwrap();
@@ -221,14 +232,15 @@ mod tests {
     fn test_check_condition() {
         let row_true = create_row_with_values();
         let row_false = create_row_with_columns();
-        let condition = Expression::Comparison 
-            {left: Operand::Column(COLULMN1.to_string()), 
-            operator: "=".to_string(), 
-            right: Operand::String(VALUE1.to_string())};
-        
+        let condition = Expression::Comparison {
+            left: Operand::Column(COLULMN1.to_string()),
+            operator: "=".to_string(),
+            right: Operand::String(VALUE1.to_string()),
+        };
+
         let result_true = row_true.check_condition(&condition).unwrap();
         let result_false = row_false.check_condition(&condition).unwrap();
-        
+
         assert_eq!(result_true, true);
         assert_eq!(result_false, false);
     }
@@ -243,7 +255,7 @@ mod tests {
         same_values.insert(COLULMN1.to_string(), VALUE1.to_string());
         same_values.insert(COLUMN2.to_string(), VALUE2.to_string());
         let row = Row::new(&columns, values);
-        
+
         let hashmap = row.hashmap();
 
         assert_eq!(hashmap, same_values);

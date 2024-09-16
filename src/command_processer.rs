@@ -16,21 +16,11 @@ pub fn process_command(args: &[String]) -> Result<(), CustomError> {
     let directory = Path::new(args[1].as_str());
     if let Some(Token::Keyword(keyword)) = tokens.first() {
         match keyword.as_str() {
-            "INSERT" => {
-                process_insert(&tokens, directory)
-            }
-            "UPDATE" => {
-                process_update(&tokens, directory)
-            }
-            "DELETE" => {
-                process_delete(&tokens, directory)
-            }
-            "SELECT" => {
-                process_select(&tokens, directory)
-            }
-            other => {
-                CustomError::error_invalid_syntax(&format!("Invalid command: {}", other))
-            }
+            "INSERT" => process_insert(&tokens, directory),
+            "UPDATE" => process_update(&tokens, directory),
+            "DELETE" => process_delete(&tokens, directory),
+            "SELECT" => process_select(&tokens, directory),
+            other => CustomError::error_invalid_syntax(&format!("Invalid command: {}", other)),
         }
     } else {
         CustomError::error_invalid_syntax("Usage: <COMMAND> <...>")
@@ -141,7 +131,6 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
             b_value.cmp(a_value)
         });
     });
-    println!("{}", columns.join(","));
     for row in selected_rows {
         let mut row_values = vec![];
         for column in &columns {
@@ -384,11 +373,15 @@ mod tests {
         let args = vec![
             "sql".to_string(),
             "test_table_insert/".to_string(),
-            format!("INSERT INTO {} (column1, column2) VALUES ('value1', 'value2');", table_name),
+            format!(
+                "INSERT INTO {} (column1, column2) VALUES ('value1', 'value2');",
+                table_name
+            ),
         ];
 
         let result = process_command(&args);
 
+        println!("{:?}", result);
         assert!(result.is_ok());
         let contents = std::fs::read_to_string(&file_path).unwrap();
         assert_eq!(contents, "column1,column2\nvalue1,value2\n");
@@ -410,14 +403,20 @@ mod tests {
         let args = vec![
             "sql".to_string(),
             "test_table_update/".to_string(),
-            format!("UPDATE {} SET column1 = 'new_value1' WHERE column1 = 'value1';", table_name),
+            format!(
+                "UPDATE {} SET column1 = 'new_value1' WHERE column1 = 'value1';",
+                table_name
+            ),
         ];
 
         let result = process_command(&args);
 
         assert!(result.is_ok());
         let contents = std::fs::read_to_string(&file_path).unwrap();
-        assert_eq!(contents, "column1,column2\nnew_value1,value2\nvalue3,value4\n");
+        assert_eq!(
+            contents,
+            "column1,column2\nnew_value1,value2\nvalue3,value4\n"
+        );
 
         std::fs::remove_file(file_path).expect("Error deleting file");
         std::fs::remove_dir(table_dir).expect("Error deleting directory");
