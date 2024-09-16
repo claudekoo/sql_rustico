@@ -27,11 +27,14 @@ pub enum Token {
 
 fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Chars>) -> Token {
     let mut token_value = String::new();
-    while let Some(&ch) = chars.peek() { // este ciclo se termina cuando el caracter no es alfanumérico
-        if ch.is_ascii_digit() { // si es un digito se agrega al string
+    while let Some(&ch) = chars.peek() {
+        // este ciclo se termina cuando el caracter no es alfanumérico
+        if ch.is_ascii_digit() {
+            // si es un digito se agrega al string
             token_value.push(ch);
             chars.next();
-        } else if ch.is_alphabetic() { // si se encontró una letra, es un identificador. Se agrega al string hasta que no sea alfanumérico y retorna un Token::Identifier
+        } else if ch.is_alphabetic() {
+            // si se encontró una letra, es un identificador. Se agrega al string hasta que no sea alfanumérico y retorna un Token::Identifier
             while let Some(&ch) = chars.peek() {
                 if ch.is_alphanumeric() {
                     token_value.push(ch);
@@ -41,7 +44,8 @@ fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Cha
                 }
             }
             return Token::Identifier(token_value); // se retorna un Token::Identifier
-        } else { // si no es alfanumérico se termina el ciclo
+        } else {
+            // si no es alfanumérico se termina el ciclo
             break;
         }
     }
@@ -50,7 +54,8 @@ fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Cha
 
 fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
     let mut word = String::new();
-    while let Some(&ch) = chars.peek() { // se agrega al string hasta que no sea alfanumérico
+    while let Some(&ch) = chars.peek() {
+        // se agrega al string hasta que no sea alfanumérico
         if ch.is_alphanumeric() {
             word.push(ch);
             chars.next();
@@ -63,12 +68,15 @@ fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
         "INSERT", "UPDATE", "DELETE", "SELECT", "FROM", "WHERE", "SET", "INTO", "VALUES", "ORDER",
         "BY", "DESC",
     ]
-    .contains(&word_upper.as_str()) // si es una palabra clave se retorna un Token::Keyword
+    .contains(&word_upper.as_str())
+    // si es una palabra clave se retorna un Token::Keyword
     {
         Token::Keyword(word_upper)
-    } else if ["AND", "OR", "NOT"].contains(&word_upper.as_str()) { // si es un operador lógico se retorna un Token::LogicalOperator
+    } else if ["AND", "OR", "NOT"].contains(&word_upper.as_str()) {
+        // si es un operador lógico se retorna un Token::LogicalOperator
         Token::LogicalOperator(word_upper)
-    } else { // si no es una palabra clave ni un operador lógico, es un identificador. Se retorna un Token::Identifier
+    } else {
+        // si no es una palabra clave ni un operador lógico, es un identificador. Se retorna un Token::Identifier
         Token::Identifier(word)
     }
 }
@@ -76,7 +84,8 @@ fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
 fn tokenize_string(chars: &mut Peekable<Chars>) -> Token {
     chars.next(); // salteo la comilla
     let mut string = String::new();
-    while let Some(&ch) = chars.peek() { // se agrega al string hasta que se encuentre otra comilla
+    while let Some(&ch) = chars.peek() {
+        // se agrega al string hasta que se encuentre otra comilla
         if ch != '\'' {
             string.push(ch);
             chars.next();

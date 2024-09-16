@@ -119,7 +119,8 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
     )?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     let mut selected_rows = select_rows_table(table_path.as_str(), &condition, &mut columns)?;
-    order_by.iter().rev().for_each(|tuple| { // ordeno las filas por cada columna del ORDER BY en orden inverso
+    order_by.iter().rev().for_each(|tuple| {
+        // ordeno las filas por cada columna del ORDER BY en orden inverso
         let column: &str = tuple.0.as_str();
         let ascent: &str = tuple.1.as_str();
         selected_rows.sort_by(|a, b| {
@@ -131,7 +132,8 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
             b_value.cmp(a_value)
         });
     });
-    for row in selected_rows { // imprimo las columnas indicadas de las filas seleccionadas
+    for row in selected_rows {
+        // imprimo las columnas indicadas de las filas seleccionadas
         let mut row_values = vec![];
         for column in &columns {
             if let Some(value) = row.get(column) {

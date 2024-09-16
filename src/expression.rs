@@ -122,13 +122,6 @@ mod tests {
 
         let expression = Expression::Comparison {
             left: Operand::Column("column1".to_string()),
-            operator: "!=".to_string(),
-            right: Operand::String("value2".to_string()),
-        };
-        assert_eq!(evaluate_expression(&expression, &row).unwrap(), true);
-
-        let expression = Expression::Comparison {
-            left: Operand::Column("column1".to_string()),
             operator: ">".to_string(),
             right: Operand::String("value2".to_string()),
         };

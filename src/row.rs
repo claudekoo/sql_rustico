@@ -38,7 +38,8 @@ impl Row {
     pub fn write_row(&self, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
         let last_index = self.columns_in_order.len() - 1;
 
-        for (actual_index, column) in self.columns_in_order.iter().enumerate() { // Para cada columna en orden, si el valor existe en el HashMap se escribe, de lo contrario se escribe un valor por defecto.
+        for (actual_index, column) in self.columns_in_order.iter().enumerate() {
+            // Para cada columna en orden, si el valor existe en el HashMap se escribe, de lo contrario se escribe un valor por defecto.
             let value_option = self.values.get(column);
             if let Some(value) = value_option {
                 write_result(writer, value)?;
@@ -62,7 +63,8 @@ impl Row {
         writer: &mut BufWriter<File>,
     ) -> Result<(), CustomError> {
         let expression_is_true = evaluate_expression(condition, &self.values)?;
-        if expression_is_true { // Si la condición es verdadera, se actualizan los valores.
+        if expression_is_true {
+            // Si la condición es verdadera, se actualizan los valores.
             for column_to_update in update_values.keys() {
                 update_if_present(
                     &mut self.values,
@@ -82,7 +84,8 @@ impl Row {
         writer: &mut BufWriter<File>,
     ) -> Result<(), CustomError> {
         let expression_is_true: bool = evaluate_expression(condition, &self.values)?;
-        if !expression_is_true { // Si la condición es falsa, se escribe la fila.
+        if !expression_is_true {
+            // Si la condición es falsa, se escribe la fila.
             self.write_row(writer)?;
         }
         Ok(())

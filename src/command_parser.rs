@@ -30,10 +30,12 @@ fn parse_insert_into(
     iter: &mut Peekable<Iter<Token>>,
     table_name: &mut String,
 ) -> Result<(), CustomError> {
-    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "INTO") { // Verifico que haya INTO
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "INTO") {
+        // Verifico que haya INTO
         return CustomError::error_invalid_syntax("Expected INTO after INSERT");
     }
-    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() { // Verifico que haya nombre de tabla
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
+        // Verifico que haya nombre de tabla
         *table_name = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected table name after INTO");
@@ -45,10 +47,13 @@ fn parse_insert_into_columns(
     columns: &mut Vec<String>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Symbol('(')) = iter.next() { // Verifico que se abra parentesis
-        while let Some(token) = iter.next() { // Este ciclo termina al encontrar un ')'
+    if let Some(Token::Symbol('(')) = iter.next() {
+        // Verifico que se abra parentesis
+        while let Some(token) = iter.next() {
+            // Este ciclo termina al encontrar un ')'
             match token {
-                Token::Identifier(name) | Token::String(name) => { // Si es nombre de columna, lo agrego
+                Token::Identifier(name) | Token::String(name) => {
+                    // Si es nombre de columna, lo agrego
                     columns.push(name.to_string());
                     if let Some(Token::Symbol(')')) | Some(Token::Symbol(',')) = iter.peek() {
                     } else {
@@ -57,16 +62,19 @@ fn parse_insert_into_columns(
                         );
                     }
                 }
-                Token::Symbol(',') => { // Si es coma, verifico que su siguiente sea nombre de columna
+                Token::Symbol(',') => {
+                    // Si es coma, verifico que su siguiente sea nombre de columna
                     if let Some(Token::Identifier(_)) = iter.peek() {
                     } else {
                         return CustomError::error_invalid_syntax("Expected column name after ','");
                     }
                 }
-                Token::Symbol(')') => { // Si se cierra parentesis, termino
+                Token::Symbol(')') => {
+                    // Si se cierra parentesis, termino
                     break;
                 }
-                _ => { // Si no es un token esperado, devuelvo error
+                _ => {
+                    // Si no es un token esperado, devuelvo error
                     return CustomError::error_invalid_syntax(
                         "Expected column name or ')' after '('",
                     );
@@ -84,11 +92,13 @@ fn parse_insert_values(
     iter: &mut Peekable<Iter<Token>>,
     columns: &[String],
 ) -> Result<(), CustomError> {
-    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "VALUES") { // Verifico que haya VALUES
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "VALUES") {
+        // Verifico que haya VALUES
         return CustomError::error_invalid_syntax("Expected VALUES after column names");
     }
     parse_insert_value(values, iter, columns)?; // Parseo el primer valor
-    while let Some(Token::Symbol(',')) = iter.peek() { // Si lo sigue una coma, parseo otro valor
+    while let Some(Token::Symbol(',')) = iter.peek() {
+        // Si lo sigue una coma, parseo otro valor
         iter.next();
         parse_insert_value(values, iter, columns)?;
     }
@@ -101,18 +111,22 @@ fn parse_insert_value(
     columns: &[String],
 ) -> Result<(), CustomError> {
     let mut row: HashMap<String, String> = HashMap::new(); // Hashmap de un VALUE para devolver: columna -> valor
-    if let Some(Token::Symbol('(')) = iter.next() { // Verifico que se abra parentesis
+    if let Some(Token::Symbol('(')) = iter.next() {
+        // Verifico que se abra parentesis
         let mut column_index = 0; // Indice de la columna actual
-        while let Some(token) = iter.next() { // Este ciclo termina al encontrar un ')'
+        while let Some(token) = iter.next() {
+            // Este ciclo termina al encontrar un ')'
             match token {
-                Token::Integer(_) | Token::String(_) => { // Si es un valor, lo agrego al hashmap
+                Token::Integer(_) | Token::String(_) => {
+                    // Si es un valor, lo agrego al hashmap
                     if let Some(Token::Symbol(')')) | Some(Token::Symbol(',')) = iter.peek() {
                     } else {
                         return CustomError::error_invalid_syntax(
                             "Expected ',' or ')' after value",
                         );
                     }
-                    if column_index >= columns.len() { // Si hay mas valores que columnas, devuelvo error
+                    if column_index >= columns.len() {
+                        // Si hay mas valores que columnas, devuelvo error
                         return CustomError::error_invalid_syntax("Too many values for columns");
                     }
                     let value = match token {
@@ -123,13 +137,15 @@ fn parse_insert_value(
                     row.insert(columns[column_index].to_string(), value); // Agrego el valor de la columna[i] al hashmap
                     column_index += 1;
                 }
-                Token::Symbol(',') => { // Si es coma, verifico que su siguiente sea un valor
+                Token::Symbol(',') => {
+                    // Si es coma, verifico que su siguiente sea un valor
                     if let Some(Token::Integer(_)) | Some(Token::String(_)) = iter.peek() {
                     } else {
                         return CustomError::error_invalid_syntax("Expected value after ','");
                     }
                 }
-                Token::Symbol(')') => { // Si se cierra parentesis, pusheo el hashmap al vector de valores y termino
+                Token::Symbol(')') => {
+                    // Si se cierra parentesis, pusheo el hashmap al vector de valores y termino
                     values.push(row);
                     break;
                 }
@@ -167,7 +183,8 @@ pub fn parse_update(
 ) -> Result<(), CustomError> {
     let mut iter = tokens.iter().peekable();
     iter.next(); // salteo el UPDATE
-    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() { // Verifico que haya nombre de tabla
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
+        // Verifico que haya nombre de tabla
         *table_name = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected table name after UPDATE");
@@ -182,11 +199,13 @@ fn parse_update_set_values(
     set_values: &mut HashMap<String, String>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "SET") { // Verifico que haya SET
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "SET") {
+        // Verifico que haya SET
         return CustomError::error_invalid_syntax("Expected SET after table name");
     }
     parse_update_set_value(set_values, iter)?; // Parseo el primer valor
-    while let Some(Token::Symbol(',')) = iter.peek() { // Si lo sigue una coma, parseo otro valor
+    while let Some(Token::Symbol(',')) = iter.peek() {
+        // Si lo sigue una coma, parseo otro valor
         iter.next();
         parse_update_set_value(set_values, iter)?;
     }
@@ -199,13 +218,16 @@ fn parse_update_set_value(
 ) -> Result<(), CustomError> {
     let column: String;
     let value: String;
-    if let Some(Token::Identifier(name)) = iter.next() { // Verifico que haya nombre de columna
+    if let Some(Token::Identifier(name)) = iter.next() {
+        // Verifico que haya nombre de columna
         column = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected column name to set value after SET");
     }
-    if matches!(iter.next(), Some(Token::ComparisonOperator(keyword)) if keyword.as_str() == "=") { // Verifico que haya '='
-        if let Some(Token::Integer(string)) | Some(Token::String(string)) = iter.next() { // Verifico que haya valor
+    if matches!(iter.next(), Some(Token::ComparisonOperator(keyword)) if keyword.as_str() == "=") {
+        // Verifico que haya '='
+        if let Some(Token::Integer(string)) | Some(Token::String(string)) = iter.next() {
+            // Verifico que haya valor
             value = string.to_string();
         } else {
             return CustomError::error_invalid_syntax("Expected value after '='");
@@ -221,7 +243,8 @@ fn parse_condition(
     condition: &mut Expression,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Keyword(keyword)) = iter.peek() { // Verifico que haya WHERE
+    if let Some(Token::Keyword(keyword)) = iter.peek() {
+        // Verifico que haya WHERE
         if keyword.as_str() == "WHERE" {
             iter.next();
             *condition = parse_expression(iter)?; // Parseo la condicion
@@ -243,7 +266,8 @@ pub fn parse_delete(
 ) -> Result<(), CustomError> {
     let mut iter = tokens.iter().peekable();
     iter.next(); // salteo el DELETE
-    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() { // Verifico que haya nombre de tabla
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
+        // Verifico que haya nombre de tabla
         *table_name = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected table name after DELETE");
@@ -280,20 +304,25 @@ fn parse_select_columns(
     columns: &mut Vec<String>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if matches!(iter.peek(), Some(Token::Symbol('*'))) { // Si hay '*', lo dejo vacío, que indica que se seleccionan todas las columnas
+    if matches!(iter.peek(), Some(Token::Symbol('*'))) {
+        // Si hay '*', lo dejo vacío, que indica que se seleccionan todas las columnas
         iter.next();
         return Ok(());
     }
-    while let Some(token) = iter.peek() { // Este ciclo termina al encontrar un Keyword
+    while let Some(token) = iter.peek() {
+        // Este ciclo termina al encontrar un Keyword
         match token {
-            Token::Identifier(name) => { // Si es nombre de columna, lo agrego
+            Token::Identifier(name) => {
+                // Si es nombre de columna, lo agrego
                 columns.push(name.to_string());
                 iter.next();
             }
-            Token::Keyword(_) => { // Si es Keyword, termino
+            Token::Keyword(_) => {
+                // Si es Keyword, termino
                 break;
             }
-            Token::Symbol(',') => { // Si es coma, verifico que su siguiente sea nombre de columna
+            Token::Symbol(',') => {
+                // Si es coma, verifico que su siguiente sea nombre de columna
                 iter.next();
                 if let Some(Token::Identifier(_)) = iter.peek() {
                 } else {
@@ -314,10 +343,12 @@ fn parse_select_from(
     table_name: &mut String,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "FROM") { // Verifico que haya FROM
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "FROM") {
+        // Verifico que haya FROM
         return CustomError::error_invalid_syntax("Expected FROM after column names");
     }
-    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() { // Verifico que haya nombre de tabla
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
+        // Verifico que haya nombre de tabla
         *table_name = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected table name after FROM");
@@ -329,16 +360,20 @@ fn parse_order_by(
     order_by: &mut Vec<(String, String)>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if matches!(iter.peek(), Some(Token::Keyword(keyword)) if keyword.as_str() == "ORDER") { // Verifico que haya ORDER
+    if matches!(iter.peek(), Some(Token::Keyword(keyword)) if keyword.as_str() == "ORDER") {
+        // Verifico que haya ORDER
         iter.next();
-        if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "BY") { // Verifico que haya BY
+        if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "BY") {
+            // Verifico que haya BY
             return CustomError::error_invalid_syntax("Expected BY after ORDER");
         }
-    } else { // Si no hay ORDER BY, no hay ningun orden que seguir
+    } else {
+        // Si no hay ORDER BY, no hay ningun orden que seguir
         return Ok(());
     }
     parse_order_by_column(order_by, iter)?; // Parseo la primera columna por la cual ordenar
-    while let Some(Token::Symbol(',')) = iter.peek() { // Si lo sigue una coma, parseo otra columna
+    while let Some(Token::Symbol(',')) = iter.peek() {
+        // Si lo sigue una coma, parseo otra columna
         iter.next();
         parse_order_by_column(order_by, iter)?;
     }
@@ -351,12 +386,14 @@ fn parse_order_by_column(
 ) -> Result<(), CustomError> {
     let order_by_tuple: (String, String);
     let order_by_column: String;
-    if let Some(Token::Identifier(name)) = iter.next() { // Verifico que haya nombre de columna
+    if let Some(Token::Identifier(name)) = iter.next() {
+        // Verifico que haya nombre de columna
         order_by_column = name.to_string();
     } else {
         return CustomError::error_invalid_syntax("Expected column name after ORDER BY or ','");
     }
-    if let Some(Token::Keyword(keyword)) = iter.peek() { // Verifico que haya DESC o nada
+    if let Some(Token::Keyword(keyword)) = iter.peek() {
+        // Verifico que haya DESC o nada
         if keyword.as_str() == "DESC" {
             iter.next();
             order_by_tuple = (order_by_column, "DESC".to_string());
