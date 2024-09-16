@@ -30,11 +30,7 @@ fn parse_insert_into(
     iter: &mut Peekable<Iter<Token>>,
     table_name: &mut String,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Keyword(keyword)) = iter.next() {
-        if keyword.as_str() != "INTO" {
-            return CustomError::error_invalid_syntax("Expected INTO after INSERT");
-        }
-    } else {
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "INTO") {
         return CustomError::error_invalid_syntax("Expected INTO after INSERT");
     }
     if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
@@ -88,23 +84,18 @@ fn parse_insert_values(
     iter: &mut Peekable<Iter<Token>>,
     columns: &[String],
 ) -> Result<(), CustomError> {
-    if let Some(Token::Keyword(keyword)) = iter.next() {
-        if keyword.as_str() == "VALUES" {
-        } else {
-            return CustomError::error_invalid_syntax("Expected VALUES after column names");
-        }
-    } else {
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "VALUES") {
         return CustomError::error_invalid_syntax("Expected VALUES after column names");
     }
-    parse_value(values, iter, columns)?;
+    parse_insert_value(values, iter, columns)?;
     while let Some(Token::Symbol(',')) = iter.peek() {
         iter.next();
-        parse_value(values, iter, columns)?;
+        parse_insert_value(values, iter, columns)?;
     }
     Ok(())
 }
 
-fn parse_value(
+fn parse_insert_value(
     values: &mut Vec<HashMap<String, String>>,
     iter: &mut Peekable<Iter<Token>>,
     columns: &[String],
@@ -151,6 +142,17 @@ fn parse_value(
     Ok(())
 }
 
+fn check_ending_with_semicolon(iter: &mut Peekable<Iter<Token>>) -> Result<(), CustomError> {
+    if let Some(Token::Symbol(';')) = iter.next() {
+        if iter.peek().is_some() {
+            return CustomError::error_invalid_syntax("Tokens found after ';'");
+        }
+    } else {
+        return CustomError::error_invalid_syntax("Expected ';' at the end of the command");
+    }
+    Ok(())
+}
+
 /// Parsea un comando UPDATE que llega en forma de vector de tokens.
 /// Modifica los parametros table_name, set_values y condition.
 ///
@@ -183,11 +185,7 @@ fn parse_update_set_values(
     set_values: &mut HashMap<String, String>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Keyword(keyword)) = iter.next() {
-        if keyword.as_str() != "SET" {
-            return CustomError::error_invalid_syntax("Expected SET after table name");
-        }
-    } else {
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "SET") {
         return CustomError::error_invalid_syntax("Expected SET after table name");
     }
     parse_update_set_value(set_values, iter)?;
@@ -209,22 +207,15 @@ fn parse_update_set_value(
     } else {
         return CustomError::error_invalid_syntax("Expected column name to set value after SET");
     }
-    if let Some(Token::ComparisonOperator(keyword)) = iter.next() {
-        if keyword.as_str() == "=" {
-            if let Some(Token::Integer(int)) = iter.peek() {
-                value = int.to_string();
-            } else if let Some(Token::String(string)) = iter.peek() {
-                value = string.to_string();
-            } else {
-                return CustomError::error_invalid_syntax("Expected value after '='");
-            }
+    if matches!(iter.next(), Some(Token::ComparisonOperator(keyword)) if keyword.as_str() == "=") {
+        if let Some(Token::Integer(string)) | Some(Token::String(string)) = iter.next() {
+            value = string.to_string();
         } else {
-            return CustomError::error_invalid_syntax("Expected '=' after column name");
+            return CustomError::error_invalid_syntax("Expected value after '='");
         }
     } else {
         return CustomError::error_invalid_syntax("Expected '=' after column name");
     }
-    iter.next();
     set_values.insert(column, value);
     Ok(())
 }
@@ -285,37 +276,15 @@ pub fn parse_select(
     iter.next(); // salteo el SELECT
     parse_select_columns(columns, &mut iter)?;
     parse_select_from(table_name, &mut iter)?;
-    if let Some(Token::Keyword(keyword)) = iter.peek() {
-        if keyword.as_str() == "WHERE" {
-            iter.next();
-            *condition = parse_expression(&mut iter)?;
+    parse_condition(condition, &mut iter)?;
+    if matches!(iter.peek(), Some(Token::Keyword(keyword)) if keyword.as_str() == "ORDER") {
+        iter.next();
+        if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "BY") {
+            return CustomError::error_invalid_syntax("Expected BY after ORDER");
         }
-    }
-    if let Some(Token::Keyword(keyword)) = iter.peek() {
-        if keyword.as_str() == "ORDER" {
-            iter.next();
-            if let Some(Token::Keyword(keyword)) = iter.next() {
-                if keyword.as_str() != "BY" {
-                    return CustomError::error_invalid_syntax("Expected BY after ORDER");
-                }
-            } else {
-                return CustomError::error_invalid_syntax("Expected BY after ORDER");
-            }
-            parse_order(order_by, &mut iter)?;
-        }
+        parse_order(order_by, &mut iter)?;
     }
     check_ending_with_semicolon(&mut iter)?;
-    Ok(())
-}
-
-fn check_ending_with_semicolon(iter: &mut Peekable<Iter<Token>>) -> Result<(), CustomError> {
-    if let Some(Token::Symbol(';')) = iter.next() {
-        if iter.peek().is_some() {
-            return CustomError::error_invalid_syntax("Tokens found after ';'");
-        }
-    } else {
-        return CustomError::error_invalid_syntax("Expected ';' at the end of the command");
-    }
     Ok(())
 }
 
@@ -323,16 +292,8 @@ fn parse_select_columns(
     columns: &mut Vec<String>,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Symbol('*')) = iter.peek() {
-        // si columns esta vacio, se seleccionan todas las columnas
+    if matches!(iter.peek(), Some(Token::Symbol('*'))) {
         iter.next();
-        if let Some(Token::Keyword(keyword)) = iter.peek() {
-            if keyword.as_str() == "FROM" {
-                iter.next();
-                return Ok(());
-            }
-            return CustomError::error_invalid_syntax("Expected FROM <tablename> after '*'");
-        }
     }
     while let Some(token) = iter.peek() {
         match token {
@@ -364,11 +325,7 @@ fn parse_select_from(
     table_name: &mut String,
     iter: &mut Peekable<Iter<Token>>,
 ) -> Result<(), CustomError> {
-    if let Some(Token::Keyword(keyword)) = iter.next() {
-        if keyword.as_str() != "FROM" {
-            return CustomError::error_invalid_syntax("Expected FROM after column names");
-        }
-    } else {
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "FROM") {
         return CustomError::error_invalid_syntax("Expected FROM after column names");
     }
     if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
