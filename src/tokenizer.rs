@@ -27,11 +27,11 @@ pub enum Token {
 
 fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Chars>) -> Token {
     let mut token_value = String::new();
-    while let Some(&ch) = chars.peek() {
-        if ch.is_ascii_digit() {
+    while let Some(&ch) = chars.peek() { // este ciclo se termina cuando el caracter no es alfanumérico
+        if ch.is_ascii_digit() { // si es un digito se agrega al string
             token_value.push(ch);
             chars.next();
-        } else if ch.is_alphabetic() {
+        } else if ch.is_alphabetic() { // si se encontró una letra, es un identificador. Se agrega al string hasta que no sea alfanumérico y retorna un Token::Identifier
             while let Some(&ch) = chars.peek() {
                 if ch.is_alphanumeric() {
                     token_value.push(ch);
@@ -40,17 +40,17 @@ fn tokenize_integer_or_identifier_starting_with_integer(chars: &mut Peekable<Cha
                     break;
                 }
             }
-            return Token::Identifier(token_value);
-        } else {
+            return Token::Identifier(token_value); // se retorna un Token::Identifier
+        } else { // si no es alfanumérico se termina el ciclo
             break;
         }
     }
-    Token::Integer(token_value)
+    Token::Integer(token_value) // si no se encontró una letra, es un número entero. Se retorna un Token::Integer
 }
 
 fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
     let mut word = String::new();
-    while let Some(&ch) = chars.peek() {
+    while let Some(&ch) = chars.peek() { // se agrega al string hasta que no sea alfanumérico
         if ch.is_alphanumeric() {
             word.push(ch);
             chars.next();
@@ -63,20 +63,20 @@ fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
         "INSERT", "UPDATE", "DELETE", "SELECT", "FROM", "WHERE", "SET", "INTO", "VALUES", "ORDER",
         "BY", "DESC",
     ]
-    .contains(&word_upper.as_str())
+    .contains(&word_upper.as_str()) // si es una palabra clave se retorna un Token::Keyword
     {
         Token::Keyword(word_upper)
-    } else if ["AND", "OR", "NOT"].contains(&word_upper.as_str()) {
+    } else if ["AND", "OR", "NOT"].contains(&word_upper.as_str()) { // si es un operador lógico se retorna un Token::LogicalOperator
         Token::LogicalOperator(word_upper)
-    } else {
+    } else { // si no es una palabra clave ni un operador lógico, es un identificador. Se retorna un Token::Identifier
         Token::Identifier(word)
     }
 }
 
 fn tokenize_string(chars: &mut Peekable<Chars>) -> Token {
-    chars.next();
+    chars.next(); // salteo la comilla
     let mut string = String::new();
-    while let Some(&ch) = chars.peek() {
+    while let Some(&ch) = chars.peek() { // se agrega al string hasta que se encuentre otra comilla
         if ch != '\'' {
             string.push(ch);
             chars.next();
@@ -117,12 +117,12 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
 
     while let Some(&ch) = chars.peek() {
         if ch.is_whitespace() {
-            // ignorar espacios y newlines
-            chars.next(); // esto ocurre solo cuando no esta entre comillas
+            // ignorar espacios y newlines fuera de comillas
+            chars.next();
         } else if ch.is_ascii_digit() {
             tokens.push(tokenize_integer_or_identifier_starting_with_integer(
                 &mut chars,
-            ));
+            )); // números enteros o nombres que empiezan con un número
         } else if ch.is_alphabetic() {
             tokens.push(tokenize_word(&mut chars)); // palabras clave o nombres
         } else if ch == '\'' {
@@ -130,7 +130,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
         } else if ['=', '>', '<'].contains(&ch) {
             tokens.push(tokenize_comparison_operator(&mut chars)); // operadores de comparacion
         } else if [',', '(', ')', ';', '*'].contains(&ch) {
-            tokens.push(Token::Symbol(ch)); // no lo modulo porque siempre es un solo caracter
+            tokens.push(Token::Symbol(ch)); // símbolos especiales
             chars.next();
         } else {
             CustomError::error_invalid_syntax(&format!("Invalid syntax near: {}", ch))?;

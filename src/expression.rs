@@ -65,7 +65,6 @@ pub fn evaluate_expression(
             let right_value = evaluate_operand(right, row)?;
             match operator.as_str() {
                 "=" => Ok(left_value == right_value),
-                "!=" => Ok(left_value != right_value),
                 ">" => Ok(left_value > right_value),
                 "<" => Ok(left_value < right_value),
                 ">=" => Ok(left_value >= right_value),

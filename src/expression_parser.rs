@@ -8,18 +8,18 @@ use std::slice::Iter;
 /// El orden de precedencia de los operadores lógicos es el siguiente:
 /// NOT, AND, OR
 pub fn parse_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
-    parse_or_expression(tokens)
+    parse_or_expression(tokens) // primero entra en la de precedencia más baja
 }
 
 fn parse_or_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
-    let mut expression = parse_and_expression(tokens)?;
-    while let Some(Token::LogicalOperator(op)) = tokens.peek() {
+    let mut expression = parse_and_expression(tokens)?; // entra en la de siguiente precedencia
+    while let Some(Token::LogicalOperator(op)) = tokens.peek() { 
         if op == "OR" {
             tokens.next();
             let right = parse_and_expression(tokens)?;
-            expression = Expression::Or {
-                left: Box::new(expression),
-                right: Box::new(right),
+            expression = Expression::Or { // Se va armando el árbol de expresión
+                left: Box::new(expression), // Esto es lo que se vino parseando con igual o mayor precedencia
+                right: Box::new(right), // Esto es lo que se parsea después con mayor precedencia
             };
         } else {
             break;
@@ -29,14 +29,14 @@ fn parse_or_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression,
 }
 
 fn parse_and_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
-    let mut expression = parse_not_expression(tokens)?;
+    let mut expression = parse_not_expression(tokens)?; // entra en la de siguiente precedencia
     while let Some(Token::LogicalOperator(op)) = tokens.peek() {
         if op == "AND" {
             tokens.next();
             let right = parse_not_expression(tokens)?;
-            expression = Expression::And {
-                left: Box::new(expression),
-                right: Box::new(right),
+            expression = Expression::And { // Se va armando el árbol de expresión
+                left: Box::new(expression), // Esto es lo que se vino parseando con igual o mayor precedencia
+                right: Box::new(right), // Esto es lo que se parsea después con mayor precedencia
             };
         } else {
             break;
@@ -50,8 +50,8 @@ fn parse_not_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression
         if op == "NOT" {
             tokens.next();
             let expression = parse_primary_expression(tokens)?;
-            return Ok(Expression::Not {
-                right: Box::new(expression),
+            return Ok(Expression::Not { // Se va armando el árbol de expresión
+                right: Box::new(expression), // Esto es lo que se parsea después con mayor precedencia
             });
         }
     }
@@ -59,10 +59,10 @@ fn parse_not_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression
 }
 
 fn parse_primary_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expression, CustomError> {
-    if let Some(Token::Symbol('(')) = tokens.peek() {
+    if let Some(Token::Symbol('(')) = tokens.peek() { // Si se abre paréntesis, se parsea la expresión que está adentro por completo
         tokens.next();
         let expression = parse_expression(tokens)?;
-        if let Some(Token::Symbol(')')) = tokens.next() {
+        if let Some(Token::Symbol(')')) = tokens.next() { // Verifica que haya un paréntesis de cierre
             return Ok(expression);
         } else {
             return Err(CustomError::InvalidSyntax {
@@ -70,7 +70,7 @@ fn parse_primary_expression(tokens: &mut Peekable<Iter<Token>>) -> Result<Expres
             });
         }
     }
-    parse_comparison_expression(tokens)
+    parse_comparison_expression(tokens) // Si no hay paréntesis, se parsea una expresión de comparación
 }
 
 fn parse_comparison_expression(
@@ -78,10 +78,10 @@ fn parse_comparison_expression(
 ) -> Result<Expression, CustomError> {
     if let Some(token) = tokens.peek() {
         match token {
-            Token::Identifier(_) | Token::String(_) | Token::Integer(_) => {
+            Token::Identifier(_) | Token::String(_) | Token::Integer(_) => { // Se parsea un operando
                 let left = parse_operand(tokens)?;
-                if let Some(Token::ComparisonOperator(op)) = tokens.next() {
-                    let right = parse_operand(tokens)?;
+                if let Some(Token::ComparisonOperator(op)) = tokens.next() { // Verifica que haya un operador de comparación
+                    let right = parse_operand(tokens)?; // Parsea el operando de la derecha
                     return Ok(Expression::Comparison {
                         left,
                         operator: op.to_string(),

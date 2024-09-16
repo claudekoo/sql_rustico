@@ -78,7 +78,7 @@ fn process_update(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
     let mut table_name = String::new();
     let mut set_values = HashMap::new();
     let mut condition = Expression::True;
-    parse_update(tokens, &mut table_name, &mut set_values, &mut condition)?;
+    parse_update(tokens, &mut table_name, &mut set_values, &mut condition)?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     table_name.push_str(".csv");
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
@@ -93,7 +93,7 @@ fn process_update(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
 fn process_delete(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut condition = Expression::True;
-    parse_delete(tokens, &mut table_name, &mut condition)?;
+    parse_delete(tokens, &mut table_name, &mut condition)?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     table_name.push_str(".csv");
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
@@ -116,10 +116,10 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
         &mut table_name,
         &mut condition,
         &mut order_by,
-    )?;
+    )?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     let mut selected_rows = select_rows_table(table_path.as_str(), &condition, &mut columns)?;
-    order_by.iter().rev().for_each(|tuple| {
+    order_by.iter().rev().for_each(|tuple| { // ordeno las filas por cada columna del ORDER BY en orden inverso
         let column: &str = tuple.0.as_str();
         let ascent: &str = tuple.1.as_str();
         selected_rows.sort_by(|a, b| {
@@ -131,7 +131,7 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
             b_value.cmp(a_value)
         });
     });
-    for row in selected_rows {
+    for row in selected_rows { // imprimo las columnas indicadas de las filas seleccionadas
         let mut row_values = vec![];
         for column in &columns {
             if let Some(value) = row.get(column) {
@@ -222,7 +222,7 @@ fn copy_table(table_path: &str, writer: &mut BufWriter<File>) -> Result<Vec<Stri
     let table_file = open_table_path(table_path)?;
     let mut columns: Vec<String> = vec![];
     let table_reader = std::io::BufReader::new(table_file);
-    let mut first_line = true;
+    let mut first_line = true; // flag para saber si es la primera linea = columnas
     for line in table_reader.lines() {
         if line.is_err() {
             return Err(CustomError::GenericError {
@@ -250,7 +250,7 @@ fn update_table(
     let table_file = open_table_path(table_path)?;
     let mut columns: Vec<String> = vec![];
     let table_reader = std::io::BufReader::new(table_file);
-    let mut first_line = true;
+    let mut first_line = true; // flag para saber si es la primera linea = columnas
     for line in table_reader.lines() {
         if line.is_err() {
             return CustomError::error_generic("Couldn't read table file");
@@ -278,7 +278,7 @@ fn delete_rows_table(
     let table_file = open_table_path(table_path)?;
     let mut columns: Vec<String> = vec![];
     let table_reader = std::io::BufReader::new(table_file);
-    let mut first_line = true;
+    let mut first_line = true; // flag para saber si es la primera linea = columnas
     for line in table_reader.lines() {
         if line.is_err() {
             return CustomError::error_generic("Couldn't read table file");
@@ -305,7 +305,7 @@ fn select_rows_table(
 ) -> Result<Vec<HashMap<String, String>>, CustomError> {
     let table_file = open_table_path(table_path)?;
     let table_reader = std::io::BufReader::new(table_file);
-    let mut first_line = true;
+    let mut first_line = true; // flag para saber si es la primera linea = columnas
     let mut selected_rows = vec![];
     let mut full_columns: Vec<String> = vec![];
     for line in table_reader.lines() {
