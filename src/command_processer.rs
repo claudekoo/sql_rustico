@@ -294,6 +294,13 @@ fn select_rows_default(
                 // si es la primera linea, guardo las columnas
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
+                for column_to_print in columns_to_print {
+                    if !full_columns.contains(column_to_print) {
+                        return CustomError::error_generic (
+                            format!("Column not found: {}", column_to_print).as_str(),
+                        );
+                    }
+                }
                 let row = parse_row(&full_columns, line.as_str())?;
                 row.print_row(columns_to_print)?;
                 continue;
