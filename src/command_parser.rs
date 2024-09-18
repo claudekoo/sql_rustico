@@ -405,7 +405,9 @@ fn parse_order_by_column(
             iter.next();
             order_by_tuple = (order_by_column, "ASC".to_string());
         } else {
-            return CustomError::error_invalid_syntax("Expected DESC, ASC or nothing after column name");
+            return CustomError::error_invalid_syntax(
+                "Expected DESC, ASC or nothing after column name",
+            );
         }
     } else {
         order_by_tuple = (order_by_column, "ASC".to_string());

@@ -121,7 +121,9 @@ impl Row {
     pub fn print_row(&self, columns_to_print: &[String]) -> Result<(), CustomError> {
         for (index, column) in columns_to_print.iter().enumerate() {
             if !self.columns_in_order.contains(column) {
-                CustomError::error_invalid_column(format!("Column {} does not exist", column).as_str())?;
+                CustomError::error_invalid_column(
+                    format!("Column {} does not exist", column).as_str(),
+                )?;
             }
             if let Some(value) = self.values.get(column) {
                 print!("{}", value);

@@ -275,7 +275,7 @@ fn select_rows_default(
     table_reader: BufReader<File>,
     condition: &Expression,
     columns_to_print: &[String],
-) -> Result<(), CustomError>{
+) -> Result<(), CustomError> {
     let mut first_line = true;
     let mut full_columns: Vec<String> = vec![];
     for line in table_reader.lines() {
@@ -285,9 +285,12 @@ fn select_rows_default(
             });
         }
         if let Ok(line) = line {
-            if first_line { // si es la primera linea, guardo las columnas
+            if first_line {
+                // si es la primera linea, guardo las columnas
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
+                let row = row_parser::parse_row(&full_columns, line.as_str())?;
+                row.print_row(columns_to_print)?;
                 continue;
             }
             let row = row_parser::parse_row(&full_columns, line.as_str())?;
@@ -324,6 +327,8 @@ fn select_rows_ordered(
                         columns_to_print.push(column.to_string());
                     }
                 }
+                let row = row_parser::parse_row(&full_columns, line.as_str())?;
+                row.print_row(columns_to_print)?;
                 continue;
             }
             let row = row_parser::parse_row(&full_columns, line.as_str())?;
