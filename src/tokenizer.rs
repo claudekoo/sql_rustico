@@ -56,7 +56,7 @@ fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
     let mut word = String::new();
     while let Some(&ch) = chars.peek() {
         // se agrega al string hasta que no sea alfanumérico
-        if ch.is_alphanumeric() {
+        if ch.is_alphanumeric() || ch == '_' || ch == '-' {
             word.push(ch);
             chars.next();
         } else {
@@ -132,7 +132,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, CustomError> {
             tokens.push(tokenize_integer_or_identifier_starting_with_integer(
                 &mut chars,
             )); // números enteros o nombres que empiezan con un número
-        } else if ch.is_alphabetic() {
+        } else if ch.is_alphabetic() || ch == '_'  || ch == '-' {
             tokens.push(tokenize_word(&mut chars)); // palabras clave o nombres
         } else if ch == '\'' {
             tokens.push(tokenize_string(&mut chars)); // strings
