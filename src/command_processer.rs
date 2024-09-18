@@ -3,10 +3,10 @@ use super::custom_error::CustomError;
 use super::expression::Expression;
 use super::row::Row;
 use super::tokenizer::{tokenize, Token};
-use crate::row_parser;
+use crate::row_parser::{parse_columns, parse_row};
 use std::collections::HashMap;
-use std::fs::{self, File, ReadDir};
-use std::io::{BufRead, BufReader, BufWriter};
+use std::fs::{self, File, OpenOptions, ReadDir};
+use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
@@ -44,17 +44,45 @@ fn process_insert(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
     parse_insert(tokens, &mut table_name, &mut columns, &mut values)?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?; // busco la tabla
     table_name.push_str(".csv");
-    let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
-    let tmp_file = create_file(&tmp_path)?; // creo el archivo temporal
-    let mut writer = BufWriter::new(tmp_file);
-    let full_columns = copy_table(table_path.as_str(), &mut writer)?; // copio la tabla original en el archivo temporal
-    for new_value in values {
-        // escribo cada valor nuevo
-        let new_row = Row::new(&full_columns, new_value);
-        new_row.write_row(&mut writer)?;
+    let table_file = open_table_path(&table_path)?;
+    let mut table_reader = BufReader::new(table_file);
+    let mut line = String::new();
+    let full_columns: Vec<String> = if table_reader.read_line(&mut line).is_ok() {
+        // leo la primera linea para obtener las columnas
+        parse_columns(&line)?
+    } else {
+        return CustomError::error_invalid_table("Couldn't read table file");
+    };
+
+    if let Ok(file) = OpenOptions::new().append(true).open(&table_path) {
+        let mut writer = BufWriter::new(file);
+        add_newline_if_needed(&mut writer, &mut table_reader)?;
+        for new_value in values {
+            // escribo cada valor nuevo
+            let row = Row::new(&full_columns, new_value);
+            row.write_row(&mut writer)?;
+        }
+    } else {
+        return CustomError::error_invalid_table("Couldn't open table file");
     }
-    remove_file(&table_path)?;
-    rename_file(&tmp_path, &table_path)?;
+    Ok(())
+}
+
+fn add_newline_if_needed(
+    writer: &mut BufWriter<File>,
+    reader: &mut BufReader<File>,
+) -> Result<(), CustomError> {
+    if reader.seek(SeekFrom::End(-1)).is_err() {
+        return CustomError::error_invalid_table("Couldn't read end of table file");
+    }
+    let mut buffer = [0; 1];
+    if reader.read_exact(&mut buffer).is_ok() {
+        if buffer[0] != b'\n'  && writeln!(writer).is_err() {
+            return CustomError::error_invalid_table("Couldn't add newline to table file");
+        }
+    } else {
+        return CustomError::error_invalid_table("Couldn't read end of table file");
+    }
     Ok(())
 }
 
@@ -191,29 +219,6 @@ fn open_table_path(table_path: &str) -> Result<File, CustomError> {
     })
 }
 
-fn copy_table(table_path: &str, writer: &mut BufWriter<File>) -> Result<Vec<String>, CustomError> {
-    let table_file = open_table_path(table_path)?;
-    let mut columns: Vec<String> = vec![];
-    let table_reader = std::io::BufReader::new(table_file);
-    let mut first_line = true; // flag para saber si es la primera linea = columnas
-    for line in table_reader.lines() {
-        if line.is_err() {
-            return Err(CustomError::GenericError {
-                message: "Couldn't read table file".to_string(),
-            });
-        }
-        if let Ok(line) = line {
-            if first_line {
-                first_line = false;
-                columns = line.split(",").map(|s| s.to_string()).collect();
-            }
-            let row = row_parser::parse_row(&columns, line.as_str())?;
-            row.write_row(writer)?;
-        }
-    }
-    Ok(columns)
-}
-
 fn update_table(
     table_path: &str,
     writer: &mut BufWriter<File>,
@@ -232,11 +237,11 @@ fn update_table(
             if first_line {
                 first_line = false;
                 columns = line.split(",").map(|s| s.to_string()).collect();
-                let row = row_parser::parse_row(&columns, line.as_str())?;
+                let row = parse_row(&columns, line.as_str())?;
                 row.write_row(writer)?;
                 continue;
             }
-            let mut row = row_parser::parse_row(&columns, line.as_str())?;
+            let mut row = parse_row(&columns, line.as_str())?;
             row.update_row(update_values, condition, writer)?;
         }
     }
@@ -260,11 +265,11 @@ fn delete_rows_table(
             if first_line {
                 first_line = false;
                 columns = line.split(",").map(|s| s.to_string()).collect();
-                let row = row_parser::parse_row(&columns, line.as_str())?;
+                let row = parse_row(&columns, line.as_str())?;
                 row.write_row(writer)?;
                 continue;
             }
-            let row = row_parser::parse_row(&columns, line.as_str())?;
+            let row = parse_row(&columns, line.as_str())?;
             row.delete_row(condition, writer)?;
         }
     }
@@ -289,11 +294,11 @@ fn select_rows_default(
                 // si es la primera linea, guardo las columnas
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
-                let row = row_parser::parse_row(&full_columns, line.as_str())?;
+                let row = parse_row(&full_columns, line.as_str())?;
                 row.print_row(columns_to_print)?;
                 continue;
             }
-            let row = row_parser::parse_row(&full_columns, line.as_str())?;
+            let row = parse_row(&full_columns, line.as_str())?;
             let selected = row.check_condition(condition)?;
             if selected {
                 row.print_row(columns_to_print)?;
@@ -327,11 +332,11 @@ fn select_rows_ordered(
                         columns_to_print.push(column.to_string());
                     }
                 }
-                let row = row_parser::parse_row(&full_columns, line.as_str())?;
+                let row = parse_row(&full_columns, line.as_str())?;
                 row.print_row(columns_to_print)?;
                 continue;
             }
-            let row = row_parser::parse_row(&full_columns, line.as_str())?;
+            let row = parse_row(&full_columns, line.as_str())?;
             let selected: bool = row.check_condition(condition)?;
             if selected {
                 selected_rows.push(row);
@@ -345,13 +350,13 @@ fn select_rows_ordered(
     Ok(())
 }
 
-fn order_rows(rows: &mut Vec<Row>, order_by: &[(String, String)]) -> Result<(), CustomError> {
+fn order_rows(rows: &mut [Row], order_by: &[(String, String)]) -> Result<(), CustomError> {
     for (column, order) in order_by.iter().rev() {
         rows.sort_by(|a, b| {
             if order == "ASC" {
-                return a.cmp_by_column(column, b);
+                a.cmp_by_column(column, b)
             } else {
-                return b.cmp_by_column(column, a);
+                b.cmp_by_column(column, a)
             }
         });
     }
