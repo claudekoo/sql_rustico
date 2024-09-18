@@ -97,13 +97,43 @@ impl Row {
         Ok(result)
     }
 
-    /// Devuelve un HashMap con los valores de la fila.
-    pub fn hashmap(&self) -> HashMap<String, String> {
-        let mut new_hashmap = HashMap::new();
-        for (key, value) in self.values.iter() {
-            new_hashmap.insert(key.to_string(), value.to_string());
+    /// Retorna un Option con el valor correspondiente a la columna de la fila.
+    /// Si la columna no existe, se retorna None.
+    pub fn get(&self, column: &str) -> Option<&String> {
+        if let Some(value) = self.values.get(column) {
+            Some(&value)
+        } else {
+            return None;
         }
-        new_hashmap
+    }
+
+    /// Retorna un Ordering según la comparación de dos filas por una columna dada.
+    pub fn cmp_by_column(&self, column: &str, row: &Row) -> core::cmp::Ordering {
+        match (self.get(column), row.get(column)) {
+            (None, None) => core::cmp::Ordering::Equal,
+            (None, Some(_)) => core::cmp::Ordering::Less,
+            (Some(_), None) => core::cmp::Ordering::Greater,
+            (Some(value1), Some(value2)) => value1.cmp(value2),
+        }
+    }
+
+    /// Imprime una fila en standard output, dado un vector de columnas a imprimir.
+    pub fn print_row(&self, columns_to_print: &[String]) -> Result<(), CustomError> {
+        for (index, column) in columns_to_print.iter().enumerate() {
+            if !self.columns_in_order.contains(column) {
+                CustomError::error_invalid_column(format!("Column {} does not exist", column).as_str())?;
+            }
+            if let Some(value) = self.values.get(column) {
+                print!("{}", value);
+            } else {
+                print!("{}", DEFAULT_VALUE);
+            }
+            if index != columns_to_print.len() - 1 {
+                print!(",");
+            }
+        }
+        println!();
+        Ok(())
     }
 }
 
@@ -249,18 +279,23 @@ mod tests {
     }
 
     #[test]
-    fn test_hashmap() {
-        let columns = vec![COLULMN1.to_string(), COLUMN2.to_string()];
-        let mut values = HashMap::new();
-        let mut same_values: HashMap<String, String> = HashMap::new();
-        values.insert(COLULMN1.to_string(), VALUE1.to_string());
-        values.insert(COLUMN2.to_string(), VALUE2.to_string());
-        same_values.insert(COLULMN1.to_string(), VALUE1.to_string());
-        same_values.insert(COLUMN2.to_string(), VALUE2.to_string());
-        let row = Row::new(&columns, values);
+    fn test_get() {
+        let row = create_row_with_values();
+        let value = row.get(COLULMN1).unwrap();
+        assert_eq!(value, VALUE1);
+    }
 
-        let hashmap = row.hashmap();
+    #[test]
+    fn test_cmp_by_column() {
+        let row1 = create_row_with_values();
+        let row2 = create_row_with_columns();
 
-        assert_eq!(hashmap, same_values);
+        let result1 = row1.cmp_by_column(COLULMN1, &row2);
+        let result2 = row2.cmp_by_column(COLULMN1, &row1);
+        let result3 = row1.cmp_by_column(COLULMN1, &row1);
+
+        assert_eq!(result1, core::cmp::Ordering::Greater);
+        assert_eq!(result2, core::cmp::Ordering::Less);
+        assert_eq!(result3, core::cmp::Ordering::Equal);
     }
 }

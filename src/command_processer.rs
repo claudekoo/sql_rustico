@@ -6,7 +6,7 @@ use super::tokenizer::{tokenize, Token};
 use crate::row_parser;
 use std::collections::HashMap;
 use std::fs::{self, File, ReadDir};
-use std::io::{BufRead, BufWriter};
+use std::io::{BufRead, BufReader, BufWriter};
 use std::path::Path;
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
@@ -118,36 +118,7 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
         &mut order_by,
     )?; // parseo los tokens
     let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
-    let mut selected_rows = select_rows_table(table_path.as_str(), &condition, &mut columns)?;
-    order_by.iter().rev().for_each(|tuple| {
-        // ordeno las filas por cada columna del ORDER BY en orden inverso
-        let column: &str = tuple.0.as_str();
-        let ascent: &str = tuple.1.as_str();
-        selected_rows.sort_by(|a, b| {
-            let a_value = a.get(column).unwrap();
-            let b_value = b.get(column).unwrap();
-            if ascent == "ASC" {
-                return a_value.cmp(b_value);
-            }
-            b_value.cmp(a_value)
-        });
-    });
-    for row in selected_rows {
-        // imprimo las columnas indicadas de las filas seleccionadas
-        let mut row_values = vec![];
-        for column in &columns {
-            if let Some(value) = row.get(column) {
-                row_values.push(value);
-            } else {
-                return CustomError::error_invalid_column(&format!(
-                    "No column named {} found from the table",
-                    column
-                ));
-            }
-        }
-        let row_values_str: Vec<&str> = row_values.iter().map(|string| string.as_str()).collect();
-        println!("{}", row_values_str.join(","));
-    }
+    select_rows_table(table_path.as_str(), &condition, &mut columns, &order_by)?;
     Ok(())
 }
 
@@ -300,13 +271,41 @@ fn delete_rows_table(
     Ok(())
 }
 
-fn select_rows_table(
-    table_path: &str,
+fn select_rows_default(
+    table_reader: BufReader<File>,
     condition: &Expression,
-    columns_to_display: &mut Vec<String>,
-) -> Result<Vec<HashMap<String, String>>, CustomError> {
-    let table_file = open_table_path(table_path)?;
-    let table_reader = std::io::BufReader::new(table_file);
+    columns_to_print: &[String],
+) -> Result<(), CustomError>{
+    let mut first_line = true;
+    let mut full_columns: Vec<String> = vec![];
+    for line in table_reader.lines() {
+        if line.is_err() {
+            return Err(CustomError::GenericError {
+                message: "Couldn't read table file".to_string(),
+            });
+        }
+        if let Ok(line) = line {
+            if first_line { // si es la primera linea, guardo las columnas
+                first_line = false;
+                full_columns = line.split(",").map(|s| s.to_string()).collect();
+                continue;
+            }
+            let row = row_parser::parse_row(&full_columns, line.as_str())?;
+            let selected = row.check_condition(condition)?;
+            if selected {
+                row.print_row(columns_to_print)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn select_rows_ordered(
+    table_reader: BufReader<File>,
+    condition: &Expression,
+    columns_to_print: &mut Vec<String>,
+    order_by: &[(String, String)],
+) -> Result<(), CustomError> {
     let mut first_line = true; // flag para saber si es la primera linea = columnas
     let mut selected_rows = vec![];
     let mut full_columns: Vec<String> = vec![];
@@ -320,9 +319,9 @@ fn select_rows_table(
             if first_line {
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
-                if columns_to_display.is_empty() {
+                if columns_to_print.is_empty() {
                     for column in &full_columns {
-                        columns_to_display.push(column.to_string());
+                        columns_to_print.push(column.to_string());
                     }
                 }
                 continue;
@@ -330,11 +329,44 @@ fn select_rows_table(
             let row = row_parser::parse_row(&full_columns, line.as_str())?;
             let selected: bool = row.check_condition(condition)?;
             if selected {
-                selected_rows.push(row.hashmap());
+                selected_rows.push(row);
             }
         }
     }
-    Ok(selected_rows)
+    order_rows(&mut selected_rows, order_by)?;
+    for row in selected_rows {
+        row.print_row(columns_to_print)?;
+    }
+    Ok(())
+}
+
+fn order_rows(rows: &mut Vec<Row>, order_by: &[(String, String)]) -> Result<(), CustomError> {
+    for (column, order) in order_by.iter().rev() {
+        rows.sort_by(|a, b| {
+            if order == "ASC" {
+                return a.cmp_by_column(column, b);
+            } else {
+                return b.cmp_by_column(column, a);
+            }
+        });
+    }
+    Ok(())
+}
+
+fn select_rows_table(
+    table_path: &str,
+    condition: &Expression,
+    columns_to_print: &mut Vec<String>,
+    order_by: &[(String, String)],
+) -> Result<(), CustomError> {
+    let table_file = open_table_path(table_path)?;
+    let table_reader = std::io::BufReader::new(table_file);
+    if order_by.is_empty() {
+        select_rows_default(table_reader, condition, columns_to_print)?;
+    } else {
+        select_rows_ordered(table_reader, condition, columns_to_print, order_by)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
