@@ -63,6 +63,20 @@ pub fn evaluate_expression(
         } => {
             let left_value = evaluate_operand(left, row)?;
             let right_value = evaluate_operand(right, row)?;
+            if let Ok(left_number) = str_to_number(&left_value) {
+                if let Ok(right_number) = str_to_number(&right_value) {
+                    return match operator.as_str() {
+                        "=" => Ok(left_number == right_number),
+                        ">" => Ok(left_number > right_number),
+                        "<" => Ok(left_number < right_number),
+                        ">=" => Ok(left_number >= right_number),
+                        "<=" => Ok(left_number <= right_number),
+                        _ => Err(CustomError::GenericError {
+                            message: format!("Invalid operator: {}", operator),
+                        }),
+                    };
+                }
+            }
             match operator.as_str() {
                 "=" => Ok(left_value == right_value),
                 ">" => Ok(left_value > right_value),
@@ -74,6 +88,16 @@ pub fn evaluate_expression(
                 }),
             }
         }
+    }
+}
+
+fn str_to_number(s: &str) -> Result<i32, CustomError> {
+    if let Ok(number) = s.parse::<i32>() {
+        Ok(number)
+    } else {
+        Err(CustomError::GenericError {
+            message: format!("Invalid number: {}", s),
+        })
     }
 }
 
@@ -91,8 +115,7 @@ fn evaluate_operand(
                 })
             }
         }
-        Operand::String(value) => Ok(value.to_string()),
-        Operand::Integer(value) => Ok(value.to_string()),
+        Operand::String(value) | Operand::Integer(value) => Ok(value.to_string()),
     }
 }
 
