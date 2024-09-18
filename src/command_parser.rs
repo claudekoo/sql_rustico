@@ -266,6 +266,10 @@ pub fn parse_delete(
 ) -> Result<(), CustomError> {
     let mut iter = tokens.iter().peekable();
     iter.next(); // salteo el DELETE
+    if !matches!(iter.next(), Some(Token::Keyword(keyword)) if keyword.as_str() == "FROM") {
+        // Verifico que haya FROM
+        return CustomError::error_invalid_syntax("Expected FROM after DELETE");
+    }
     if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
         // Verifico que haya nombre de tabla
         *table_name = name.to_string();
@@ -582,6 +586,7 @@ mod tests {
         // DELETE table WHERE column1 = 'value1';
         let tokens = vec![
             Token::Keyword("DELETE".to_string()),
+            Token::Keyword("FROM".to_string()),
             Token::Identifier("table".to_string()),
             Token::Keyword("WHERE".to_string()),
             Token::Identifier("column1".to_string()),
@@ -615,6 +620,7 @@ mod tests {
         // DELETE table column1 = 'value1'
         let tokens = vec![
             Token::Keyword("DELETE".to_string()),
+            Token::Keyword("FROM".to_string()),
             Token::Identifier("table".to_string()), // Le falta WHERE
             Token::Identifier("column1".to_string()),
             Token::ComparisonOperator("=".to_string()),

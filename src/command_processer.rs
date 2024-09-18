@@ -469,7 +469,7 @@ mod tests {
         let args = vec![
             "sql".to_string(),
             "test_table_delete/".to_string(),
-            format!("DELETE {} WHERE column1 = 'value1';", table_name),
+            format!("DELETE FROM {} WHERE column1 = 'value1';", table_name),
         ];
 
         let result = process_command(&args);
