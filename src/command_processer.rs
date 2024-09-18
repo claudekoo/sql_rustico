@@ -5,15 +5,14 @@ use super::row::Row;
 use super::tokenizer::{tokenize, Token};
 use crate::row_parser::{parse_columns, parse_row};
 use std::collections::HashMap;
-use std::fs::{self, File, OpenOptions, ReadDir};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
-use std::path::Path;
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
 /// Procesa el comando recibido recibiendo un vector de argumentos, donde el primer argumento es el directorio de los archivos csv, y el segundo argumento es el comando a procesar.
 pub fn process_command(args: &[String]) -> Result<(), CustomError> {
     let tokens = tokenize(args[2].as_str())?;
-    let directory = Path::new(args[1].as_str());
+    let directory = args[1].as_str();
     if let Some(Token::Keyword(keyword)) = tokens.first() {
         match keyword.as_str() {
             "INSERT" => process_insert(&tokens, directory),
@@ -37,13 +36,13 @@ fn create_file(file_path: &str) -> Result<File, CustomError> {
     })
 }
 
-fn process_insert(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
+fn process_insert(tokens: &[Token], directory: &str) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut columns = vec![];
     let mut values = vec![];
     parse_insert(tokens, &mut table_name, &mut columns, &mut values)?; // parseo los tokens
-    let table_path = find_table_csv(Path::new(directory), table_name.as_str())?; // busco la tabla
     table_name.push_str(".csv");
+    let table_path = format!("{}/{}", directory, table_name);
     let table_file = open_table_path(&table_path)?;
     let mut table_reader = BufReader::new(table_file);
     let mut line = String::new();
@@ -102,28 +101,30 @@ fn rename_file(from: &str, to: &str) -> Result<(), CustomError> {
     Ok(())
 }
 
-fn process_update(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
+fn process_update(tokens: &[Token], directory: &str) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut set_values = HashMap::new();
     let mut condition = Expression::True;
     parse_update(tokens, &mut table_name, &mut set_values, &mut condition)?; // parseo los tokens
-    let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     table_name.push_str(".csv");
+    let table_path = format!("{}/{}", directory, table_name);
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
+    println!("Creating {}", tmp_path);
     let tmp_file = create_file(&tmp_path)?; // creo el archivo temporal
     let mut writer = BufWriter::new(tmp_file);
     update_table(table_path.as_str(), &mut writer, &condition, &set_values)?;
     remove_file(&table_path)?;
+    println!("Renaming {} to {}", tmp_path, table_path);
     rename_file(&tmp_path, &table_path)?;
     Ok(())
 }
 
-fn process_delete(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
+fn process_delete(tokens: &[Token], directory: &str) -> Result<(), CustomError> {
     let mut table_name = String::new();
     let mut condition = Expression::True;
     parse_delete(tokens, &mut table_name, &mut condition)?; // parseo los tokens
-    let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
     table_name.push_str(".csv");
+    let table_path = format!("{}/{}", directory, table_name);
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
     let tmp_file = create_file(&tmp_path)?; // creo el archivo temporal
     let mut writer = BufWriter::new(tmp_file);
@@ -133,7 +134,7 @@ fn process_delete(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
     Ok(())
 }
 
-fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError> {
+fn process_select(tokens: &[Token], directory: &str) -> Result<(), CustomError> {
     let mut columns = vec![];
     let mut table_name = String::new();
     let mut condition = Expression::True;
@@ -145,68 +146,9 @@ fn process_select(tokens: &[Token], directory: &Path) -> Result<(), CustomError>
         &mut condition,
         &mut order_by,
     )?; // parseo los tokens
-    let table_path = find_table_csv(Path::new(directory), table_name.as_str())?;
+    let table_path = format!("{}/{}", directory, table_name);
     select_rows_table(table_path.as_str(), &condition, &mut columns, &order_by)?;
     Ok(())
-}
-
-fn find_table_csv(directory: &Path, table_name: &str) -> Result<String, CustomError> {
-    let open_dir_result = fs::read_dir(directory); // abro el directorio
-    if open_dir_result.is_err() {
-        // si no se pudo abrir devuelvo error
-        return Err(CustomError::GenericError {
-            message: format!("Couldn't open directory {:?}", directory),
-        });
-    }
-    if let Ok(open_dir) = open_dir_result {
-        // si se pudo abrir, recorro los contenidos
-        return handle_dir(table_name, open_dir);
-    }
-    Err(CustomError::GenericError {
-        message: "File not found".to_string(),
-    })
-}
-
-fn handle_dir(table_name: &str, open_dir: ReadDir) -> Result<String, CustomError> {
-    for entry in open_dir {
-        if entry.is_err() {
-            // si no se pudo abrir el archivo, devuelvo error
-            return Err(CustomError::GenericError {
-                message: "Couldn't open directory".to_string(),
-            });
-        }
-        if let Ok(entry) = entry {
-            // si se pudo abrir
-            let entry_path = entry.path();
-            if entry_path.is_dir() {
-                // si es un directorio, llamo recursivamente
-                if let Ok(found) = find_table_csv(entry_path.as_path(), table_name) {
-                    return Ok(found); // si se encontro en ese directorio, devuelvo ese path
-                }
-            } else if entry_path.is_file() {
-                // si es un archivo, verifico si es el que busco
-                let file_name = entry_path.file_name();
-                if let Some(file_name) = file_name {
-                    // si lo es, devuelvo el path
-                    if file_name.to_str() == Some(format!("{}.csv", table_name).as_str()) {
-                        let entry_path_to_str_option = entry_path.to_str();
-                        if let Some(entry_path_to_str) = entry_path_to_str_option {
-                            return Ok(entry_path_to_str.to_string());
-                        }
-                        if entry_path_to_str_option.is_none() {
-                            return Err(CustomError::GenericError {
-                                message: "Couldn't convert path to string".to_string(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // si no se encontro en el loop, devuelvo error
-    Err(CustomError::InvalidTable {
-        message: "File not found".to_string(),
-    })
 }
 
 fn open_table_path(table_path: &str) -> Result<File, CustomError> {
