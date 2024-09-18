@@ -397,8 +397,11 @@ fn parse_order_by_column(
         if keyword.as_str() == "DESC" {
             iter.next();
             order_by_tuple = (order_by_column, "DESC".to_string());
+        } else if keyword.as_str() == "ASC" {
+            iter.next();
+            order_by_tuple = (order_by_column, "ASC".to_string());
         } else {
-            return CustomError::error_invalid_syntax("Expected DESC or nothing after column name");
+            return CustomError::error_invalid_syntax("Expected DESC, ASC or nothing after column name");
         }
     } else {
         order_by_tuple = (order_by_column, "ASC".to_string());
@@ -714,7 +717,7 @@ mod tests {
             Token::Keyword("DESC".to_string()),
             Token::Symbol(','),
             Token::Identifier("column5".to_string()),
-            Token::Keyword("ASC".to_string()), // ASC no se pone
+            Token::Keyword("REVERSE".to_string()), // Keyword invalido
             Token::Symbol(';'),
         ];
         let mut columns = Vec::new();
@@ -738,7 +741,7 @@ mod tests {
         assert_eq!(
             result.err().unwrap(),
             CustomError::InvalidSyntax {
-                message: "Expected DESC or nothing after column name".to_string()
+                message: "Expected DESC, ASC or nothing after column name".to_string()
             }
         );
     }

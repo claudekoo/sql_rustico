@@ -6,7 +6,7 @@ use std::str::Chars;
 /// Los Tokens son la unidad mínima de un comando SQL existen para facilitar su parseo.
 pub enum Token {
     /// Los Keywords son palabras clave de un comando SQL, esta implementación incluye:
-    /// INSERT, UPDATE, DELETE, SELECT, FROM, WHERE, SET, INTO, VALUES, ORDER, BY, DESC
+    /// INSERT, UPDATE, DELETE, SELECT, FROM, WHERE, SET, INTO, VALUES, ORDER, BY, DESC, ASC
     Keyword(String),
     /// Los LogicalOperators son operadores lógicos, en esta implementación incluye:
     /// AND, OR, NOT
@@ -66,7 +66,7 @@ fn tokenize_word(chars: &mut Peekable<Chars>) -> Token {
     let word_upper = word.to_uppercase();
     if [
         "INSERT", "UPDATE", "DELETE", "SELECT", "FROM", "WHERE", "SET", "INTO", "VALUES", "ORDER",
-        "BY", "DESC",
+        "BY", "DESC", "ASC",
     ]
     .contains(&word_upper.as_str())
     // si es una palabra clave se retorna un Token::Keyword
