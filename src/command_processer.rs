@@ -41,8 +41,7 @@ fn process_insert(tokens: &[Token], directory: &str) -> Result<(), CustomError> 
     let mut columns = vec![];
     let mut values = vec![];
     parse_insert(tokens, &mut table_name, &mut columns, &mut values)?; // parseo los tokens
-    table_name.push_str(".csv");
-    let table_path = format!("{}/{}", directory, table_name);
+    let table_path = format!("{}/{}.csv", directory, table_name);
     let table_file = open_table_path(&table_path)?;
     let mut table_reader = BufReader::new(table_file);
     let mut line = String::new();
@@ -146,7 +145,7 @@ fn process_select(tokens: &[Token], directory: &str) -> Result<(), CustomError> 
         &mut condition,
         &mut order_by,
     )?; // parseo los tokens
-    let table_path = format!("{}/{}", directory, table_name);
+    let table_path = format!("{}/{}.csv", directory, table_name);
     select_rows_table(table_path.as_str(), &condition, &mut columns, &order_by)?;
     Ok(())
 }
@@ -218,6 +217,17 @@ fn delete_rows_table(
     Ok(())
 }
 
+fn check_columns_to_print(columns_to_print: &[String], full_columns: &[String]) -> Result<(), CustomError> {
+    for column_to_print in columns_to_print {
+        if !full_columns.contains(column_to_print) {
+            return CustomError::error_generic(
+                format!("Column not found: {}", column_to_print).as_str(),
+            );
+        }
+    }
+    Ok(())
+}
+
 fn select_rows_default(
     table_reader: BufReader<File>,
     condition: &Expression,
@@ -236,21 +246,23 @@ fn select_rows_default(
                 // si es la primera linea, guardo las columnas
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
-                for column_to_print in columns_to_print {
-                    if !full_columns.contains(column_to_print) {
-                        return CustomError::error_generic (
-                            format!("Column not found: {}", column_to_print).as_str(),
-                        );
-                    }
-                }
+                check_columns_to_print(columns_to_print, &full_columns)?; // chequeo que las columnas a imprimir existan 
                 let row = parse_row(&full_columns, line.as_str())?;
-                row.print_row(columns_to_print)?;
+                if columns_to_print.is_empty() {
+                    row.print_row(&full_columns)?;
+                } else {
+                    row.print_row(columns_to_print)?;
+                }
                 continue;
             }
             let row = parse_row(&full_columns, line.as_str())?;
             let selected = row.check_condition(condition)?;
             if selected {
-                row.print_row(columns_to_print)?;
+                if columns_to_print.is_empty() {
+                    row.print_row(&full_columns)?;
+                } else {
+                    row.print_row(columns_to_print)?;
+                }
             }
         }
     }
