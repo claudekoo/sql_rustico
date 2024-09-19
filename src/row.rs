@@ -36,8 +36,6 @@ impl Row {
 
     /// Se escribe a un archivo CSV.
     pub fn write_row(&self, writer: &mut BufWriter<File>) -> Result<(), CustomError> {
-        println!("Writing row {:?}", self.values);
-        println!("Columns in order {:?}", self.columns_in_order);
         let last_index = self.columns_in_order.len() - 1;
 
         for (actual_index, column) in self.columns_in_order.iter().enumerate() {

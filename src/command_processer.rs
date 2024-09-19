@@ -75,7 +75,7 @@ fn add_newline_if_needed(
     }
     let mut buffer = [0; 1];
     if reader.read_exact(&mut buffer).is_ok() {
-        if buffer[0] != b'\n'  && writeln!(writer).is_err() {
+        if buffer[0] != b'\n' && writeln!(writer).is_err() {
             return CustomError::error_invalid_table("Couldn't add newline to table file");
         }
     } else {
@@ -108,12 +108,10 @@ fn process_update(tokens: &[Token], directory: &str) -> Result<(), CustomError> 
     table_name.push_str(".csv");
     let table_path = format!("{}/{}", directory, table_name);
     let tmp_path = table_path.trim_end_matches(table_name.as_str()).to_string() + "_tmp.csv"; // creo el path del archivo temporal
-    println!("Creating {}", tmp_path);
     let tmp_file = create_file(&tmp_path)?; // creo el archivo temporal
     let mut writer = BufWriter::new(tmp_file);
     update_table(table_path.as_str(), &mut writer, &condition, &set_values)?;
     remove_file(&table_path)?;
-    println!("Renaming {} to {}", tmp_path, table_path);
     rename_file(&tmp_path, &table_path)?;
     Ok(())
 }
@@ -217,7 +215,10 @@ fn delete_rows_table(
     Ok(())
 }
 
-fn check_columns_to_print(columns_to_print: &[String], full_columns: &[String]) -> Result<(), CustomError> {
+fn check_columns_to_print(
+    columns_to_print: &[String],
+    full_columns: &[String],
+) -> Result<(), CustomError> {
     for column_to_print in columns_to_print {
         if !full_columns.contains(column_to_print) {
             return CustomError::error_generic(
@@ -246,7 +247,7 @@ fn select_rows_default(
                 // si es la primera linea, guardo las columnas
                 first_line = false;
                 full_columns = line.split(",").map(|s| s.to_string()).collect();
-                check_columns_to_print(columns_to_print, &full_columns)?; // chequeo que las columnas a imprimir existan 
+                check_columns_to_print(columns_to_print, &full_columns)?; // chequeo que las columnas a imprimir existan
                 let row = parse_row(&full_columns, line.as_str())?;
                 if columns_to_print.is_empty() {
                     row.print_row(&full_columns)?;
@@ -386,7 +387,6 @@ mod tests {
 
         let result = process_command(&args);
 
-        println!("{:?}", result);
         assert!(result.is_ok());
         let contents = std::fs::read_to_string(&file_path).unwrap();
         assert_eq!(contents, "column1,column2\nvalue1,value2\n");

@@ -526,7 +526,6 @@ mod tests {
 
         let result = parse_update(&tokens, &mut table_name, &mut set_values, &mut condition);
 
-        println!("{:?}", result);
         assert!(result.is_ok());
         assert_eq!(table_name, "table");
         assert_eq!(set_values, {
