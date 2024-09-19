@@ -396,6 +396,37 @@ mod tests {
     }
 
     #[test]
+    fn test_process_command_with_insert_columns_with_spaces() {
+        let table_dir = "test_table_insert_columns_with_spaces/";
+        let table_name = "tempProcessInsertColumnsWithSpaces";
+        let file_path = format!("{}{}.csv", table_dir, table_name);
+        std::fs::create_dir_all(table_dir).expect("Error creating directory");
+        let mut file = File::create(&file_path).expect("Error creating temp file");
+        writeln!(file, "column1 with spaces,column2 with spaces")
+            .expect("Error writing to temp file");
+        let args = vec![
+            "sql".to_string(),
+            "test_table_insert_columns_with_spaces/".to_string(),
+            format!(
+                "INSERT INTO {} ('column1 with spaces', 'column2 with spaces') VALUES ('value1', 'value2');",
+                table_name
+            ),
+        ];
+
+        let result = process_command(&args);
+
+        assert!(result.is_ok());
+        let contents = std::fs::read_to_string(&file_path).unwrap();
+        assert_eq!(
+            contents,
+            "column1 with spaces,column2 with spaces\nvalue1,value2\n"
+        );
+
+        std::fs::remove_file(file_path).expect("Error deleting file");
+        std::fs::remove_dir(table_dir).expect("Error deleting directory");
+    }
+
+    #[test]
     fn test_process_command_with_update() {
         let table_dir = "test_table_update/";
         let table_name = "tempProcessUpdate";

@@ -64,7 +64,7 @@ fn parse_insert_into_columns(
                 }
                 Token::Symbol(',') => {
                     // Si es coma, verifico que su siguiente sea nombre de columna
-                    if let Some(Token::Identifier(_)) = iter.peek() {
+                    if let Some(Token::Identifier(_)) | Some(Token::String(_)) = iter.peek() {
                     } else {
                         return CustomError::error_invalid_syntax("Expected column name after ','");
                     }
@@ -218,7 +218,7 @@ fn parse_update_set_value(
 ) -> Result<(), CustomError> {
     let column: String;
     let value: String;
-    if let Some(Token::Identifier(name)) = iter.next() {
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
         // Verifico que haya nombre de columna
         column = name.to_string();
     } else {
@@ -316,7 +316,7 @@ fn parse_select_columns(
     while let Some(token) = iter.peek() {
         // Este ciclo termina al encontrar un Keyword
         match token {
-            Token::Identifier(name) => {
+            Token::Identifier(name) | Token::String(name) => {
                 // Si es nombre de columna, lo agrego
                 columns.push(name.to_string());
                 iter.next();
@@ -328,7 +328,7 @@ fn parse_select_columns(
             Token::Symbol(',') => {
                 // Si es coma, verifico que su siguiente sea nombre de columna
                 iter.next();
-                if let Some(Token::Identifier(_)) = iter.peek() {
+                if let Some(Token::Identifier(_)) | Some(Token::String(_)) = iter.peek() {
                 } else {
                     return CustomError::error_invalid_syntax("Expected column name after ','");
                 }
@@ -390,7 +390,7 @@ fn parse_order_by_column(
 ) -> Result<(), CustomError> {
     let order_by_tuple: (String, String);
     let order_by_column: String;
-    if let Some(Token::Identifier(name)) = iter.next() {
+    if let Some(Token::Identifier(name)) | Some(Token::String(name)) = iter.next() {
         // Verifico que haya nombre de columna
         order_by_column = name.to_string();
     } else {
@@ -431,7 +431,7 @@ mod tests {
             Token::Symbol('('),
             Token::Identifier("column1".to_string()),
             Token::Symbol(','),
-            Token::Identifier("column2".to_string()),
+            Token::Identifier("column2 with spaces".to_string()),
             Token::Symbol(')'),
             Token::Keyword("VALUES".to_string()),
             Token::Symbol('('),
@@ -449,13 +449,16 @@ mod tests {
 
         assert!(result.is_ok());
         assert_eq!(table_name, "table");
-        assert_eq!(columns, vec!["column1".to_string(), "column2".to_string(),]);
+        assert_eq!(
+            columns,
+            vec!["column1".to_string(), "column2 with spaces".to_string(),]
+        );
         assert_eq!(
             values,
             vec![{
                 let mut row = HashMap::new();
                 row.insert("column1".to_string(), "value1".to_string());
-                row.insert("column2".to_string(), "value2".to_string());
+                row.insert("column2 with spaces".to_string(), "value2".to_string());
                 row
             }]
         );
