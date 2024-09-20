@@ -63,7 +63,7 @@ impl Row {
     }
 
     /// Actualiza los valores de una fila si cumple con una condición dada, dado un HashMap de columnas y valores a actualizar.
-    pub fn update_row(
+    pub fn update_and_write_row(
         &mut self,
         update_values: &HashMap<String, String>,
         condition: &Expression,
@@ -85,7 +85,7 @@ impl Row {
     }
 
     /// Se escribe a un archivo CSV si cumple con una condición dada, de lo contrario se omite.
-    pub fn delete_row(
+    pub fn delete_or_write_row(
         &self,
         condition: &Expression,
         writer: &mut BufWriter<File>,
@@ -233,10 +233,10 @@ mod tests {
         };
 
         row_not_to_update
-            .update_row(&update_values, &condition, &mut writer)
+            .update_and_write_row(&update_values, &condition, &mut writer)
             .unwrap();
         row_to_update
-            .update_row(&update_values, &condition, &mut writer)
+            .update_and_write_row(&update_values, &condition, &mut writer)
             .unwrap();
         writer.flush().unwrap();
         let contents = std::fs::read_to_string(test_path).unwrap();
@@ -264,9 +264,9 @@ mod tests {
         };
 
         row_not_to_delete
-            .delete_row(&condition, &mut writer)
+            .delete_or_write_row(&condition, &mut writer)
             .unwrap();
-        row_to_delete.delete_row(&condition, &mut writer).unwrap();
+        row_to_delete.delete_or_write_row(&condition, &mut writer).unwrap();
         writer.flush().unwrap();
         let contents = std::fs::read_to_string(test_path).unwrap();
         std::fs::remove_file(test_path).unwrap();

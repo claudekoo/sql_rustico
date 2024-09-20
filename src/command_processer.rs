@@ -191,7 +191,7 @@ fn update_table(
                 continue;
             }
             let mut row = parse_row(&columns, line.as_str())?;
-            row.update_row(update_values, condition, writer)?;
+            row.update_and_write_row(update_values, condition, writer)?;
         }
     }
     Ok(())
@@ -219,7 +219,7 @@ fn delete_rows_table(
                 continue;
             }
             let row = parse_row(&columns, line.as_str())?;
-            row.delete_row(condition, writer)?;
+            row.delete_or_write_row(condition, writer)?;
         }
     }
     Ok(())
