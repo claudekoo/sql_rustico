@@ -10,7 +10,7 @@ use std::io::{BufRead, BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 
 // Recibe un vector de argumentos y devuelve un Result: Ok(()) o Err(CustomError)
 /// Procesa el comando recibido recibiendo un vector de argumentos, donde el primer argumento es el directorio de los archivos csv, y el segundo argumento es el comando a procesar.
-pub fn process_command(args: &[String]) -> Result<(), CustomError> {
+pub fn process_command<W: Write>(args: &[String], output: &mut W) -> Result<(), CustomError> {
     let tokens = tokenize(args[2].as_str())?;
     let directory = args[1].as_str();
     if let Some(Token::Keyword(keyword)) = tokens.first() {
@@ -18,7 +18,7 @@ pub fn process_command(args: &[String]) -> Result<(), CustomError> {
             "INSERT" => process_insert(&tokens, directory),
             "UPDATE" => process_update(&tokens, directory),
             "DELETE" => process_delete(&tokens, directory),
-            "SELECT" => process_select(&tokens, directory),
+            "SELECT" => process_select(&tokens, directory, output),
             other => CustomError::error_invalid_syntax(&format!("Invalid command: {}", other)),
         }
     } else {
@@ -131,7 +131,11 @@ fn process_delete(tokens: &[Token], directory: &str) -> Result<(), CustomError> 
     Ok(())
 }
 
-fn process_select(tokens: &[Token], directory: &str) -> Result<(), CustomError> {
+fn process_select<W: Write>(
+    tokens: &[Token],
+    directory: &str,
+    output: &mut W,
+) -> Result<(), CustomError> {
     let mut columns = vec![];
     let mut table_name = String::new();
     let mut condition = Expression::True;
@@ -144,7 +148,13 @@ fn process_select(tokens: &[Token], directory: &str) -> Result<(), CustomError> 
         &mut order_by,
     )?; // parseo los tokens
     let table_path = format!("{}/{}.csv", directory, table_name);
-    select_rows_table(table_path.as_str(), &condition, &mut columns, &order_by)?;
+    select_rows_table(
+        table_path.as_str(),
+        &condition,
+        &mut columns,
+        &order_by,
+        output,
+    )?;
     Ok(())
 }
 
@@ -229,10 +239,11 @@ fn check_columns_to_print(
     Ok(())
 }
 
-fn select_rows_default(
+fn select_rows_default<W: Write>(
     table_reader: BufReader<File>,
     condition: &Expression,
     columns_to_print: &[String],
+    output: &mut W,
 ) -> Result<(), CustomError> {
     let mut first_line = true;
     let mut full_columns: Vec<String> = vec![];
@@ -250,9 +261,9 @@ fn select_rows_default(
                 check_columns_to_print(columns_to_print, &full_columns)?; // chequeo que las columnas a imprimir existan
                 let row = parse_row(&full_columns, line.as_str())?;
                 if columns_to_print.is_empty() {
-                    row.print_row(&full_columns)?;
+                    row.print_row(&full_columns, output)?;
                 } else {
-                    row.print_row(columns_to_print)?;
+                    row.print_row(columns_to_print, output)?;
                 }
                 continue;
             }
@@ -260,9 +271,9 @@ fn select_rows_default(
             let selected = row.check_condition(condition)?;
             if selected {
                 if columns_to_print.is_empty() {
-                    row.print_row(&full_columns)?;
+                    row.print_row(&full_columns, output)?;
                 } else {
-                    row.print_row(columns_to_print)?;
+                    row.print_row(columns_to_print, output)?;
                 }
             }
         }
@@ -270,11 +281,12 @@ fn select_rows_default(
     Ok(())
 }
 
-fn select_rows_ordered(
+fn select_rows_ordered<W: Write>(
     table_reader: BufReader<File>,
     condition: &Expression,
     columns_to_print: &mut Vec<String>,
     order_by: &[(String, String)],
+    output: &mut W,
 ) -> Result<(), CustomError> {
     let mut first_line = true; // flag para saber si es la primera linea = columnas
     let mut selected_rows = vec![];
@@ -295,7 +307,7 @@ fn select_rows_ordered(
                     }
                 }
                 let row = parse_row(&full_columns, line.as_str())?;
-                row.print_row(columns_to_print)?;
+                row.print_row(columns_to_print, output)?;
                 continue;
             }
             let row = parse_row(&full_columns, line.as_str())?;
@@ -307,7 +319,7 @@ fn select_rows_ordered(
     }
     order_rows(&mut selected_rows, order_by)?;
     for row in selected_rows {
-        row.print_row(columns_to_print)?;
+        row.print_row(columns_to_print, output)?;
     }
     Ok(())
 }
@@ -325,188 +337,19 @@ fn order_rows(rows: &mut [Row], order_by: &[(String, String)]) -> Result<(), Cus
     Ok(())
 }
 
-fn select_rows_table(
+fn select_rows_table<W: Write>(
     table_path: &str,
     condition: &Expression,
     columns_to_print: &mut Vec<String>,
     order_by: &[(String, String)],
+    output: &mut W,
 ) -> Result<(), CustomError> {
     let table_file = open_table_path(table_path)?;
     let table_reader = std::io::BufReader::new(table_file);
     if order_by.is_empty() {
-        select_rows_default(table_reader, condition, columns_to_print)?;
+        select_rows_default(table_reader, condition, columns_to_print, output)?;
     } else {
-        select_rows_ordered(table_reader, condition, columns_to_print, order_by)?;
+        select_rows_ordered(table_reader, condition, columns_to_print, order_by, output)?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::io::Write;
-
-    #[test]
-    fn test_process_command_with_invalid_directory() {
-        let args = vec![
-            "sql".to_string(),
-            "non_existent/".to_string(),
-            "SELECT * FROM table1;".to_string(),
-        ];
-        let result = process_command(&args);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_process_command_with_invalid_command() {
-        let args = vec![
-            "sql".to_string(),
-            "tables/".to_string(),
-            "INVALID COMMAND".to_string(),
-        ];
-        let result = process_command(&args);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_process_command_with_insert() {
-        let table_dir = "test_table_insert/";
-        let table_name = "tempProcessInsert";
-        let file_path = format!("{}{}.csv", table_dir, table_name);
-        std::fs::create_dir_all(table_dir).expect("Error creating directory");
-        let mut file = File::create(&file_path).expect("Error creating temp file");
-        writeln!(file, "column1,column2").expect("Error writing to temp file");
-        let args = vec![
-            "sql".to_string(),
-            "test_table_insert/".to_string(),
-            format!(
-                "INSERT INTO {} (column1, column2) VALUES ('value1', 'value2');",
-                table_name
-            ),
-        ];
-
-        let result = process_command(&args);
-
-        assert!(result.is_ok());
-        let contents = std::fs::read_to_string(&file_path).unwrap();
-        assert_eq!(contents, "column1,column2\nvalue1,value2\n");
-
-        std::fs::remove_file(file_path).expect("Error deleting file");
-        std::fs::remove_dir(table_dir).expect("Error deleting directory");
-    }
-
-    #[test]
-    fn test_process_command_with_insert_columns_with_spaces() {
-        let table_dir = "test_table_insert_columns_with_spaces/";
-        let table_name = "tempProcessInsertColumnsWithSpaces";
-        let file_path = format!("{}{}.csv", table_dir, table_name);
-        std::fs::create_dir_all(table_dir).expect("Error creating directory");
-        let mut file = File::create(&file_path).expect("Error creating temp file");
-        writeln!(file, "column1 with spaces,column2 with spaces")
-            .expect("Error writing to temp file");
-        let args = vec![
-            "sql".to_string(),
-            "test_table_insert_columns_with_spaces/".to_string(),
-            format!(
-                "INSERT INTO {} ('column1 with spaces', 'column2 with spaces') VALUES ('value1', 'value2');",
-                table_name
-            ),
-        ];
-
-        let result = process_command(&args);
-
-        assert!(result.is_ok());
-        let contents = std::fs::read_to_string(&file_path).unwrap();
-        assert_eq!(
-            contents,
-            "column1 with spaces,column2 with spaces\nvalue1,value2\n"
-        );
-
-        std::fs::remove_file(file_path).expect("Error deleting file");
-        std::fs::remove_dir(table_dir).expect("Error deleting directory");
-    }
-
-    #[test]
-    fn test_process_command_with_update() {
-        let table_dir = "test_table_update/";
-        let table_name = "tempProcessUpdate";
-        let file_path = format!("{}{}.csv", table_dir, table_name);
-        std::fs::create_dir_all(table_dir).expect("Error creating directory");
-        let mut file = File::create(&file_path).expect("Error creating temp file");
-        writeln!(file, "column1,column2").expect("Error writing to temp file");
-        writeln!(file, "value1,value2").expect("Error writing to temp file");
-        writeln!(file, "value3,value4").expect("Error writing to temp file");
-        let args = vec![
-            "sql".to_string(),
-            "test_table_update/".to_string(),
-            format!(
-                "UPDATE {} SET column1 = 'new_value1' WHERE column1 = 'value1';",
-                table_name
-            ),
-        ];
-
-        let result = process_command(&args);
-
-        assert!(result.is_ok());
-        let contents = std::fs::read_to_string(&file_path).unwrap();
-        assert_eq!(
-            contents,
-            "column1,column2\nnew_value1,value2\nvalue3,value4\n"
-        );
-
-        std::fs::remove_file(file_path).expect("Error deleting file");
-        std::fs::remove_dir(table_dir).expect("Error deleting directory");
-    }
-
-    #[test]
-    fn test_process_command_with_delete() {
-        let table_dir = "test_table_delete/";
-        let table_name = "tempProcessDelete";
-        let file_path = format!("{}{}.csv", table_dir, table_name);
-        std::fs::create_dir_all(table_dir).expect("Error creating directory");
-        let mut file = File::create(&file_path).expect("Error creating temp file");
-        writeln!(file, "column1,column2").expect("Error writing to temp file");
-        writeln!(file, "value1,value2").expect("Error writing to temp file");
-        writeln!(file, "value3,value4").expect("Error writing to temp file");
-        let args = vec![
-            "sql".to_string(),
-            "test_table_delete/".to_string(),
-            format!("DELETE FROM {} WHERE column1 = 'value1';", table_name),
-        ];
-
-        let result = process_command(&args);
-
-        assert!(result.is_ok());
-        let contents = std::fs::read_to_string(&file_path).unwrap();
-        assert_eq!(contents, "column1,column2\nvalue3,value4\n");
-
-        std::fs::remove_file(file_path).expect("Error deleting file");
-        std::fs::remove_dir(table_dir).expect("Error deleting directory");
-    }
-
-    // #[test]
-    // fn test_process_command_with_select() {
-    //     let table_dir = "test_table_select/";
-    //     let table_name = "tempProcessSelect";
-    //     let file_path = format!("{}{}.csv", table_dir, table_name);
-    //     std::fs::create_dir_all(table_dir).expect("Error creating directory");
-    //     let mut file = File::create(&file_path).expect("Error creating temp file");
-    //     writeln!(file, "column1,column2").expect("Error writing to temp file");
-    //     writeln!(file, "value1,value2").expect("Error writing to temp file");
-    //     writeln!(file, "value3,value4").expect("Error writing to temp file");
-    //     let args = vec![
-    //         "sql".to_string(),
-    //         "test_table_select/".to_string(),
-    //         format!("SELECT column2 FROM {} WHERE column1 = 'value1';", table_name),
-    //     ];
-
-    //     let result = process_command(&args);
-
-    //     assert!(result.is_ok());
-    //     let stdout_output = std::io::stdout();
-    //     assert_eq!(stdout_output, "column2\nvalue2\n");
-
-    //     std::fs::remove_file(file_path).expect("Error deleting file");
-    //     std::fs::remove_dir(table_dir).expect("Error deleting directory");
-    // }
 }

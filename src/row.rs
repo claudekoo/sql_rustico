@@ -21,6 +21,13 @@ fn write_result(writer: &mut BufWriter<File>, string: &str) -> Result<(), Custom
     Ok(())
 }
 
+fn print_result<W: Write>(output: &mut W, string: &str) -> Result<(), CustomError> {
+    if write!(output, "{}", string).is_err() {
+        return CustomError::error_generic("Error writing output");
+    }
+    Ok(())
+}
+
 impl Row {
     /// Crea una nueva fila dado un vector de columnas y un HashMap de valores.
     pub fn new(columns: &[String], values: HashMap<String, String>) -> Row {
@@ -118,7 +125,11 @@ impl Row {
     }
 
     /// Imprime una fila en standard output, dado un vector de columnas a imprimir.
-    pub fn print_row(&self, columns_to_print: &[String]) -> Result<(), CustomError> {
+    pub fn print_row<W: Write>(
+        &self,
+        columns_to_print: &[String],
+        output: &mut W,
+    ) -> Result<(), CustomError> {
         for (index, column) in columns_to_print.iter().enumerate() {
             if !self.columns_in_order.contains(column) {
                 CustomError::error_invalid_column(
@@ -126,15 +137,15 @@ impl Row {
                 )?;
             }
             if let Some(value) = self.values.get(column) {
-                print!("{}", value);
+                print_result(output, value)?;
             } else {
-                print!("{}", DEFAULT_VALUE);
+                print_result(output, DEFAULT_VALUE)?;
             }
             if index != columns_to_print.len() - 1 {
-                print!(",");
+                print_result(output, ",")?;
             }
         }
-        println!();
+        print_result(output, "\n")?;
         Ok(())
     }
 }
